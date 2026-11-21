@@ -919,6 +919,21 @@ export function App() {
         </div>
       </main>
 
+      {/* Footer with MIT License Notice */}
+      <footer className="relative z-10 border-t border-[#4C1D95]/30 bg-[#0F0F23]/70 py-4 text-center text-xs text-[#94A3B8]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          Copyright &copy; 2026 <span className="font-semibold text-[#E2E8F0]">kb18k</span> &middot;{' '}
+          <a
+            href="https://github.com/kevin1688/sm_club/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#A78BFA] underline-offset-2 transition-colors hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+          >
+            MIT License
+          </a>
+        </div>
+      </footer>
+
       {/* Special Min/Max/Normal Celebration & Drama Overlay */}
       <SpecialEffects
         record={showResultOverlay ? latestRecord : null}

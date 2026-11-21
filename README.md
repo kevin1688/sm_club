@@ -39,3 +39,10 @@ npm run build
 2. 在 GitHub Repo 的 **Settings → Pages** 將 Source 設為 **GitHub Actions**。
 3. 推送後即自動建置並發布至 GitHub Pages。
 
+## 授權條款
+
+本專案採用 [MIT License](./LICENSE) 授權。
+
+Copyright (c) 2026 **kb18k**
+
+
