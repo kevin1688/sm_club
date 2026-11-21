@@ -1,5 +1,5 @@
 import type { DrawRecord, GitHubConfig } from '../types';
-import { mergeDrawRecords } from '../utils/drawLogic';
+import { formatAmount, mergeDrawRecords } from '../utils/drawLogic';
 
 interface GitHubFileResponse {
   sha: string;
@@ -150,7 +150,7 @@ export async function syncRecordsToGitHub(
 
     const latest = merged[0];
     const defaultMsg = latest
-      ? `chore(draw): [${latest.itemName || '未指定項目'}] ${latest.winnerId} - NT$${latest.amount}`
+      ? `chore(draw): [${latest.itemName || '未指定項目'}] ${latest.winnerId} - ${formatAmount(latest.amount, latest.currencyUnit)}`
       : 'chore(draw): sync roulette history';
 
     const body: Record<string, string> = {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyAmountTier,
   computeTargetRotation,
+  formatAmount,
   getSliceIndexAtPointer,
   mergeDrawRecords,
   parseAmountInput,
@@ -22,8 +23,16 @@ describe('drawLogic', () => {
     ]);
   });
 
-  it('parses amounts flexibly including NT$ prefix and thousands commas', () => {
-    expect(parseAmountInput('NT$1,200\n$500\n100, 250, 100')).toEqual([1200, 500, 100, 250, 100]);
+  it('parses amounts flexibly including NT$ prefix, thousands commas, and Chinese units', () => {
+    expect(parseAmountInput('NT$1,200\n$500\n100天幣, 250新台幣, 100')).toEqual([
+      1200, 500, 100, 250, 100,
+    ]);
+  });
+
+  it('formats prefix and Chinese currency units cleanly', () => {
+    expect(formatAmount(1800, 'NT$')).toBe('NT$ 1,800');
+    expect(formatAmount(1800, '天幣')).toBe('1,800 天幣');
+    expect(formatAmount(1800, '新台幣')).toBe('1,800 新台幣');
   });
 
   it('classifies min, max, and normal amounts accurately', () => {
@@ -102,7 +111,7 @@ describe('drawLogic', () => {
     expect(merged[1].syncedToGitHub).toBe(true);
   });
 
-  it('exports UTF-8 BOM CSV with Chinese headers including auction item name', () => {
+  it('exports UTF-8 BOM CSV with Chinese headers including auction item name and currency unit', () => {
     const csv = recordsToCsv([
       {
         id: 'rec_1',
@@ -110,6 +119,7 @@ describe('drawLogic', () => {
         itemName: '烈焰之魂',
         winnerId: 'KAI_01',
         amount: 199,
+        currencyUnit: '天幣',
         tier: 'min',
         poolMin: 199,
         poolMax: 1999,
@@ -118,8 +128,9 @@ describe('drawLogic', () => {
         syncedToGitHub: false,
       },
     ]);
-    expect(csv.startsWith('\uFEFF時間,搶標項目,得標者 ID,得標金額')).toBe(true);
+    expect(csv.startsWith('\uFEFF時間,搶標項目,得標者 ID,得標金額,金額單位')).toBe(true);
     expect(csv).toContain('烈焰之魂');
+    expect(csv).toContain('天幣');
     expect(csv).toContain('KAI_01');
     expect(csv).toContain('幸運最低價');
   });

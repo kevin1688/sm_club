@@ -72,6 +72,7 @@ const SAMPLE_PARTICIPANTS = [
 const SAMPLE_AMOUNTS = [100, 280, 450, 600, 750, 920, 1200, 1800];
 
 const DEFAULT_SETTINGS: DrawSettings = {
+  currencyUnit: '新台幣',
   removeWinnerAfterDraw: true,
   removeAmountAfterDraw: true,
   soundEnabled: true,
@@ -228,7 +229,7 @@ export function App() {
 
     return amounts.map((amt, idx) => ({
       id: `a-${idx}-${amt}`,
-      label: formatAmount(amt),
+      label: formatAmount(amt, settings.currencyUnit),
       rawValue: amt,
       badge:
         hasMinMax && amt === minVal
@@ -237,7 +238,7 @@ export function App() {
             ? 'max'
             : undefined,
     }));
-  }, [wheelMode, participants, amounts]);
+  }, [wheelMode, participants, amounts, settings.currencyUnit]);
 
   const wheelAccentMode: 'default' | 'min' | 'max' =
     stage === 'result-revealed' && latestRecord
@@ -413,6 +414,7 @@ export function App() {
       }
 
       const resolvedItemName = itemName.trim() || '未指定項目';
+      const resolvedUnit = settings.currencyUnit.trim() || '新台幣';
 
       const newRecord: DrawRecord = {
         id: `rec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -420,6 +422,7 @@ export function App() {
         itemName: resolvedItemName,
         winnerId,
         amount: drawnAmount,
+        currencyUnit: resolvedUnit,
         tier,
         poolMin,
         poolMax,
@@ -447,7 +450,7 @@ export function App() {
         void performGitHubSync(
           githubConfig,
           nextRecords,
-          `chore(draw): [${resolvedItemName}] ${winnerId} won ${formatAmount(drawnAmount)} (${tier})`
+          `chore(draw): [${resolvedItemName}] ${winnerId} won ${formatAmount(drawnAmount, resolvedUnit)} (${tier})`
         );
       } else {
         setSyncStatus('local-only');
@@ -457,6 +460,7 @@ export function App() {
     [
       wheelMode,
       itemName,
+      settings.currencyUnit,
       settings.autoAdvanceToAmount,
       settings.removeWinnerAfterDraw,
       settings.removeAmountAfterDraw,
@@ -737,7 +741,9 @@ export function App() {
                         : 'text-[#94A3B8]'
                     }`}
                   >
-                    {latestRecord ? formatAmount(latestRecord.amount) : '待抽出...'}
+                    {latestRecord
+                      ? formatAmount(latestRecord.amount, latestRecord.currencyUnit)
+                      : '待抽出...'}
                   </span>
                   {latestRecord?.tier === 'min' && (
                     <Crown className="h-4 w-4 shrink-0 text-[#FDE68A]" aria-hidden="true" />
@@ -880,6 +886,7 @@ export function App() {
             ) : (
               <HistoryPanel
                 records={records}
+                defaultCurrencyUnit={settings.currencyUnit}
                 githubConfig={githubConfig}
                 syncStatus={syncStatus}
                 onSyncAllToGitHub={() =>

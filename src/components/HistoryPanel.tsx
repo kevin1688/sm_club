@@ -19,6 +19,7 @@ import { isGitHubReadReady, isGitHubWriteReady } from '../services/githubStorage
 
 interface HistoryPanelProps {
   records: DrawRecord[];
+  defaultCurrencyUnit: string;
   githubConfig: GitHubConfig;
   syncStatus: SyncStatus;
   onSyncAllToGitHub: () => void;
@@ -29,6 +30,7 @@ interface HistoryPanelProps {
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   records,
+  defaultCurrencyUnit,
   githubConfig,
   syncStatus,
   onSyncAllToGitHub,
@@ -47,11 +49,24 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
 
   const stats = useMemo(() => {
     const totalCount = records.length;
-    const totalAmount = records.reduce((sum, r) => sum + r.amount, 0);
     const minHits = records.filter((r) => r.tier === 'min').length;
     const maxHits = records.filter((r) => r.tier === 'max').length;
-    return { totalCount, totalAmount, minHits, maxHits };
-  }, [records]);
+
+    const totalsByUnit = new Map<string, number>();
+    for (const r of records) {
+      const unit = r.currencyUnit?.trim() || '新台幣';
+      totalsByUnit.set(unit, (totalsByUnit.get(unit) ?? 0) + r.amount);
+    }
+
+    const totalDisplay =
+      totalsByUnit.size === 0
+        ? formatAmount(0, defaultCurrencyUnit)
+        : Array.from(totalsByUnit.entries())
+            .map(([unit, sum]) => formatAmount(sum, unit))
+            .join(' / ');
+
+    return { totalCount, totalDisplay, minHits, maxHits };
+  }, [records, defaultCurrencyUnit]);
 
   const filteredRecords = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -96,8 +111,11 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
         </div>
         <div className="rounded-xl border border-white/10 bg-[#0F0F23]/80 p-3">
           <div className="text-[11px] font-medium text-[#94A3B8]">累計總金額</div>
-          <div className="mt-1 truncate font-display text-xl text-[#FDE68A] tabular-nums">
-            {formatAmount(stats.totalAmount)}
+          <div
+            title={stats.totalDisplay}
+            className="mt-1 truncate font-display text-lg text-[#FDE68A] tabular-nums"
+          >
+            {stats.totalDisplay}
           </div>
         </div>
         <div className="rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 p-3">
@@ -318,7 +336,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-[#94A3B8]">
                       <span>{new Date(rec.timestamp).toLocaleString('zh-TW')}</span>
                       <span>
-                        當輪區間：{formatAmount(rec.poolMin)} ~ {formatAmount(rec.poolMax)}
+                        當輪區間：{formatAmount(rec.poolMin, rec.currencyUnit)} ~{' '}
+                        {formatAmount(rec.poolMax, rec.currencyUnit)}
                       </span>
                     </div>
                   </div>
@@ -329,7 +348,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                         isMin ? 'text-[#34D399]' : isMax ? 'text-[#FB7185]' : 'text-[#FDE68A]'
                       }`}
                     >
-                      {formatAmount(rec.amount)}
+                      {formatAmount(rec.amount, rec.currencyUnit)}
                     </div>
                     <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[#94A3B8]">
                       {rec.syncedToGitHub ? (

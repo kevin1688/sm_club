@@ -27,6 +27,8 @@ interface PoolEditorProps {
   onLoadSampleData: () => void;
 }
 
+const CURRENCY_PRESETS = ['新台幣', '天幣', '藍鑽', '金幣', 'NT$'];
+
 export const PoolEditor: React.FC<PoolEditorProps> = ({
   itemName,
   participants,
@@ -42,6 +44,7 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
   const [participantDraft, setParticipantDraft] = useState('');
   const [amountDraft, setAmountDraft] = useState('');
 
+  const currencyUnit = settings.currencyUnit || '新台幣';
   const uniqueAmounts = Array.from(new Set(amounts));
   const hasMinMax = uniqueAmounts.length >= 2;
   const minAmount = hasMinMax ? Math.min(...amounts) : null;
@@ -212,6 +215,44 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
           )}
         </div>
 
+        {/* Currency Unit Selector */}
+        <div className="space-y-2 rounded-xl border border-white/10 bg-[#0F0F23]/65 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="currency-unit-input" className="text-xs font-bold text-[#E2E8F0]">
+              價錢單位
+            </label>
+            <div className="flex flex-wrap gap-1" role="group" aria-label="常用價錢單位快捷選擇">
+              {CURRENCY_PRESETS.map((preset) => {
+                const active = currencyUnit === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onUpdateSettings({ currencyUnit: preset })}
+                    className={`min-h-[30px] cursor-pointer rounded-lg px-2.5 text-[11px] font-bold transition-colors disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24] ${
+                      active
+                        ? 'bg-[#F59E0B] text-[#0F0F23]'
+                        : 'border border-white/10 bg-[#1E1C35] text-[#CBD5E1] hover:border-[#F59E0B]/60 hover:text-white'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <input
+            id="currency-unit-input"
+            type="text"
+            disabled={disabled}
+            value={settings.currencyUnit}
+            onChange={(e) => onUpdateSettings({ currencyUnit: e.target.value })}
+            placeholder="自訂單位，例如：新台幣、天幣、萬天幣、藍鑽..."
+            className="min-h-[40px] w-full rounded-lg border border-[#4C1D95]/60 bg-[#0F0F23] px-3 text-xs font-semibold text-white placeholder-[#64748B] focus:border-[#FBBF24] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/35 disabled:opacity-50"
+          />
+        </div>
+
         {/* Min / Max Live Preview Strip */}
         {hasMinMax && minAmount !== null && maxAmount !== null && (
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -220,7 +261,7 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
               <div className="min-w-0">
                 <div className="text-[11px] text-[#A7F3D0]">幸運最低價特效</div>
                 <div className="truncate font-bold text-white tabular-nums">
-                  {formatAmount(minAmount)}
+                  {formatAmount(minAmount, currencyUnit)}
                 </div>
               </div>
             </div>
@@ -229,7 +270,7 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
               <div className="min-w-0">
                 <div className="text-[11px] text-[#FECDD3]">最高價買單特效</div>
                 <div className="truncate font-bold text-white tabular-nums">
-                  {formatAmount(maxAmount)}
+                  {formatAmount(maxAmount, currencyUnit)}
                 </div>
               </div>
             </div>
@@ -286,7 +327,7 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
                           : 'border-white/15 bg-[#1E1C35] text-[#E2E8F0]'
                     }`}
                   >
-                    <span>{formatAmount(amt)}</span>
+                    <span>{formatAmount(amt, currencyUnit)}</span>
                     {isMin && (
                       <span className="rounded bg-[#10B981]/40 px-1 text-[10px] text-[#FEF08A]">
                         MIN

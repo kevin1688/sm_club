@@ -30,7 +30,11 @@ export function parseAmountInput(raw: string): number[] {
 
   const parsed: number[] = [];
   for (const token of tokens) {
-    const cleaned = token.replace(/^(?:NT\$|\$|￥)/i, '').replace(/,/g, '').trim();
+    const cleaned = token
+      .replace(/^(?:NT\$|US\$|\$|￥|¥)/i, '')
+      .replace(/(?:新台幣|台幣|天幣|藍鑽|鑽石|金幣|元|點)$/g, '')
+      .replace(/,/g, '')
+      .trim();
     if (!cleaned) continue;
     const value = Number(cleaned);
     if (Number.isFinite(value) && value >= 0) {
@@ -115,12 +119,20 @@ export function computeTargetRotation(
 }
 
 /**
- * Format currency in NT$ style cleanly without trailing unnecessary decimals.
+ * Format amount with configurable currency unit.
+ * Symbol prefixes (NT$, $, US$, ￥, ¥) appear before the number;
+ * word/Chinese units (新台幣, 天幣, 藍鑽, 金幣, etc.) appear cleanly after the number.
  */
-export function formatAmount(amount: number): string {
-  return `NT$ ${amount.toLocaleString('zh-TW', {
+export function formatAmount(amount: number, unit = '新台幣'): string {
+  const normalizedUnit = unit.trim() || '新台幣';
+  const formattedNumber = amount.toLocaleString('zh-TW', {
     maximumFractionDigits: 2,
-  })}`;
+  });
+
+  if (/^(?:NT\$|US\$|HK\$|\$|￥|¥|€|£)$/i.test(normalizedUnit)) {
+    return `${normalizedUnit} ${formattedNumber}`;
+  }
+  return `${formattedNumber} ${normalizedUnit}`;
 }
 
 /**
@@ -158,7 +170,7 @@ export function mergeDrawRecords(localRecords: DrawRecord[], remoteRecords: Draw
  * Export records to UTF-8 BOM CSV for Excel compatibility with Traditional Chinese.
  */
 export function recordsToCsv(records: DrawRecord[]): string {
-  const headers = ['時間', '搶標項目', '得標者 ID', '得標金額', '結果等級', '當輪最低價', '當輪最高價', '同步狀態'];
+  const headers = ['時間', '搶標項目', '得標者 ID', '得標金額', '金額單位', '結果等級', '當輪最低價', '當輪最高價', '同步狀態'];
   const tierLabels: Record<AmountTier, string> = {
     min: '幸運最低價',
     max: '最高價買單',
@@ -178,6 +190,7 @@ export function recordsToCsv(records: DrawRecord[]): string {
     r.itemName || '未指定項目',
     r.winnerId,
     r.amount,
+    r.currencyUnit || '新台幣',
     tierLabels[r.tier],
     r.poolMin,
     r.poolMax,

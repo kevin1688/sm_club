@@ -15,6 +15,7 @@ export interface DrawRecord {
   itemName: string;
   winnerId: string;
   amount: number;
+  currencyUnit?: string;
   tier: AmountTier;
   poolMin: number;
   poolMax: number;
@@ -24,6 +25,7 @@ export interface DrawRecord {
 }
 
 export interface DrawSettings {
+  currencyUnit: string;
   removeWinnerAfterDraw: boolean;
   removeAmountAfterDraw: boolean;
   soundEnabled: boolean;

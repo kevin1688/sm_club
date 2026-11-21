@@ -257,9 +257,9 @@ export const SpecialEffects: React.FC<SpecialEffectsProps> = ({
           </h2>
           <p className="mt-1.5 text-sm text-[#CBD5E1]">
             {isMin
-              ? `太神啦！成功以最低價搶下「${record.itemName || '未指定項目'}」，比最高價足足現省 ${formatAmount(diffFromOtherEnd)}！`
+              ? `太神啦！成功以最低價搶下「${record.itemName || '未指定項目'}」，比最高價足足現省 ${formatAmount(diffFromOtherEnd, record.currencyUnit)}！`
               : isMax
-                ? `感謝大戶拿下「${record.itemName || '未指定項目'}」！需支付本輪最高金額，比最低價多出 ${formatAmount(diffFromOtherEnd)}！`
+                ? `感謝大戶拿下「${record.itemName || '未指定項目'}」！需支付本輪最高金額，比最低價多出 ${formatAmount(diffFromOtherEnd, record.currencyUnit)}！`
                 : `已完成「${record.itemName || '未指定項目'}」人物與金額雙輪盤抽選並記錄。`}
           </p>
         </div>
@@ -294,7 +294,7 @@ export const SpecialEffects: React.FC<SpecialEffectsProps> = ({
                   isMin ? 'text-[#34D399]' : isMax ? 'text-[#FB7185]' : 'text-[#FDE68A]'
                 }`}
               >
-                {formatAmount(record.amount)}
+                {formatAmount(record.amount, record.currencyUnit)}
               </span>
             </div>
           </div>
