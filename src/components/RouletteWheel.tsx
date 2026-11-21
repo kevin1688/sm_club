@@ -60,6 +60,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const lastHandledSpinIdRef = useRef<number>(0);
   const [liveHoverLabel, setLiveHoverLabel] = useState<string>('');
+  const [isSuspensePhase, setIsSuspensePhase] = useState<boolean>(false);
   const ledPhaseRef = useRef<number>(0);
 
   // Store latest callbacks/items in refs so animation loop doesn't restart mid-spin
@@ -380,8 +381,10 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
     const targetIndex = Math.floor(Math.random() * currentItems.length);
     const startRotation = rotationRef.current;
-    const extraSpins = prefersReduced ? 1 : mode === 'participant' ? 7 : 8;
-    const jitter = 0.22 + Math.random() * 0.56;
+    // Extended revolutions + >2x spin duration for dramatic slow-crawl tension
+    const extraSpins = prefersReduced ? 1 : mode === 'participant' ? 13 : 15;
+    // Allow slightly wider landing range inside the target slice for near-peg edge suspense
+    const jitter = 0.16 + Math.random() * 0.68;
     const targetRotation = computeTargetRotation(
       startRotation,
       targetIndex,
@@ -390,33 +393,40 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       jitter
     );
 
-    const durationMs = prefersReduced ? 450 : mode === 'participant' ? 4400 : 5000;
+    const durationMs = prefersReduced ? 600 : mode === 'participant' ? 10500 : 12000;
     const startTime = performance.now();
     let prevSliceIdx = getSliceIndexAtPointer(startRotation, currentItems.length);
+    let suspenseEntered = false;
 
+    setIsSuspensePhase(false);
     onSpinStartRef.current();
     soundEngine.playSpinStart();
 
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / durationMs);
-      // Smooth physical deceleration (quintic/quartic blend)
-      const easeOut = 1 - Math.pow(1 - t, 4.2);
+      // Calibrated 3.15-order physical deceleration: energetic launch -> long, nail-biting slow stop
+      const easeOut = 1 - Math.pow(1 - t, 3.15);
       const currentRot = startRotation + (targetRotation - startRotation) * easeOut;
-      const instantSpeedRatio = Math.pow(1 - t, 3.2);
+      const instantSpeedRatio = Math.pow(1 - t, 2.15);
+
+      if (!suspenseEntered && t >= 0.62 && t < 1) {
+        suspenseEntered = true;
+        setIsSuspensePhase(true);
+      }
 
       rotationRef.current = currentRot;
-      ledPhaseRef.current += 0.25 + instantSpeedRatio * 1.4;
+      ledPhaseRef.current += 0.18 + instantSpeedRatio * 1.5;
 
       const sliceIdx = getSliceIndexAtPointer(currentRot, currentItems.length);
       if (sliceIdx !== prevSliceIdx) {
         prevSliceIdx = sliceIdx;
-        // Kick flapper backwards and play peg tick
-        flapperKickRef.current = -0.32 - instantSpeedRatio * 0.22;
+        // Heavier flapper kick during the slow final ticks for tactile suspense
+        flapperKickRef.current = instantSpeedRatio < 0.18 ? -0.44 : -0.3 - instantSpeedRatio * 0.22;
         soundEngine.playPegTick(instantSpeedRatio);
         setLiveHoverLabel(currentItems[sliceIdx]?.label ?? '');
       } else {
-        flapperKickRef.current *= 0.82;
+        flapperKickRef.current *= instantSpeedRatio < 0.18 ? 0.89 : 0.82;
       }
 
       drawWheel(currentRot, flapperKickRef.current, ledPhaseRef.current);
@@ -425,6 +435,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
         flapperKickRef.current = 0;
+        setIsSuspensePhase(false);
         drawWheel(targetRotation, 0, ledPhaseRef.current);
         const landedIdx = getSliceIndexAtPointer(targetRotation, currentItems.length);
         const chosenItem = currentItems[landedIdx] ?? currentItems[targetIndex];
@@ -449,10 +460,19 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       {/* Live pointer readout pill */}
       <div
         aria-live="polite"
-        className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#7C3AED]/50 bg-[#0F0F23]/90 px-4 py-1.5 text-sm font-semibold text-[#E2E8F0] shadow-lg"
+        className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold shadow-lg transition-all duration-300 ${
+          isSuspensePhase
+            ? 'border-[#F43F5E] bg-[#2D0E1F]/95 text-[#FFE4E6] shadow-[0_0_24px_rgba(244,63,94,0.45)]'
+            : 'border-[#7C3AED]/50 bg-[#0F0F23]/90 text-[#E2E8F0]'
+        }`}
       >
-        <Sparkles className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
-        <span className="text-[#94A3B8]">指針位置：</span>
+        <Sparkles
+          className={`h-4 w-4 ${isSuspensePhase ? 'text-[#FB7185] animate-pulse' : 'text-[#A78BFA]'}`}
+          aria-hidden="true"
+        />
+        <span className={isSuspensePhase ? 'text-[#FDA4AF]' : 'text-[#94A3B8]'}>
+          {isSuspensePhase ? '即將揭曉：' : '指針位置：'}
+        </span>
         <span className="max-w-[200px] truncate font-bold text-white tabular-nums">
           {liveHoverLabel || (items.length === 0 ? '請先新增名單' : '準備就緒')}
         </span>

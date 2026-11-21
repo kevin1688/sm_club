@@ -39,39 +39,56 @@ class RouletteSoundEngine {
 
     const now = ctx.currentTime;
     const clampedSpeed = Math.max(0, Math.min(1, speedRatio));
+    const isSlowSuspense = clampedSpeed < 0.22;
 
-    // Crisp percussive wood/acrylic click
+    // Crisp percussive wood/acrylic click (deeper & more resonant during final slow crawl)
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'triangle';
-    const baseFreq = 620 + clampedSpeed * 340;
+    const baseFreq = 520 + clampedSpeed * 420;
+    const decay = isSlowSuspense ? 0.058 : 0.036;
     osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.032);
+    osc.frequency.exponentialRampToValueAtTime(isSlowSuspense ? 125 : 165, now + decay);
 
-    const peakGain = 0.24 * this.volume;
+    const peakGain = (isSlowSuspense ? 0.3 : 0.23) * this.volume;
     gain.gain.setValueAtTime(0.001, now);
     gain.gain.linearRampToValueAtTime(peakGain, now + 0.003);
-    gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.038);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + decay + 0.006);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.042);
+    osc.stop(now + decay + 0.01);
+
+    // Subtle heartbeat-like low thump on the final agonizing ticks
+    if (isSlowSuspense) {
+      const thump = ctx.createOscillator();
+      const thumpGain = ctx.createGain();
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(115, now);
+      thump.frequency.exponentialRampToValueAtTime(52, now + 0.075);
+      thumpGain.gain.setValueAtTime(0.16 * this.volume, now);
+      thumpGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.08);
+      thump.connect(thumpGain);
+      thumpGain.connect(ctx.destination);
+      thump.start(now);
+      thump.stop(now + 0.085);
+    }
 
     // Tiny metallic transient snap
     const snap = ctx.createOscillator();
     const snapGain = ctx.createGain();
     snap.type = 'sine';
-    snap.frequency.setValueAtTime(1950 + clampedSpeed * 500, now);
-    snap.frequency.exponentialRampToValueAtTime(700, now + 0.015);
-    snapGain.gain.setValueAtTime(0.08 * this.volume, now);
-    snapGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.018);
+    snap.frequency.setValueAtTime(1850 + clampedSpeed * 550, now);
+    snap.frequency.exponentialRampToValueAtTime(680, now + 0.016);
+    snapGain.gain.setValueAtTime((isSlowSuspense ? 0.1 : 0.075) * this.volume, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.02);
 
     snap.connect(snapGain);
     snapGain.connect(ctx.destination);
     snap.start(now);
-    snap.stop(now + 0.02);
+    snap.stop(now + 0.024);
   }
 
   /**
