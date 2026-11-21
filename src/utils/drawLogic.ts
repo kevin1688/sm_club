@@ -32,7 +32,7 @@ export function parseAmountInput(raw: string): number[] {
   for (const token of tokens) {
     const cleaned = token
       .replace(/^(?:NT\$|US\$|\$|￥|¥)/i, '')
-      .replace(/(?:新台幣|台幣|天幣|藍鑽|鑽石|金幣|元|點)$/g, '')
+      .replace(/(?:新台幣|台幣|天幣|贊助幣|元)$/g, '')
       .replace(/,/g, '')
       .trim();
     if (!cleaned) continue;

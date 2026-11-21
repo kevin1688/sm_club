@@ -1,3 +1,6 @@
+export const CURRENCY_UNITS = ['新台幣', '天幣', '贊助幣'] as const;
+export type CurrencyUnit = (typeof CURRENCY_UNITS)[number];
+
 export type AmountTier = 'min' | 'max' | 'normal';
 
 export type DrawStageStep =
@@ -25,7 +28,7 @@ export interface DrawRecord {
 }
 
 export interface DrawSettings {
-  currencyUnit: string;
+  currencyUnit: CurrencyUnit;
   removeWinnerAfterDraw: boolean;
   removeAmountAfterDraw: boolean;
   soundEnabled: boolean;

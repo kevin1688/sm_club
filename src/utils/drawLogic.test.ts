@@ -24,15 +24,15 @@ describe('drawLogic', () => {
   });
 
   it('parses amounts flexibly including NT$ prefix, thousands commas, and Chinese units', () => {
-    expect(parseAmountInput('NT$1,200\n$500\n100天幣, 250新台幣, 100')).toEqual([
-      1200, 500, 100, 250, 100,
+    expect(parseAmountInput('NT$1,200\n$500\n100天幣, 250新台幣, 300贊助幣')).toEqual([
+      1200, 500, 100, 250, 300,
     ]);
   });
 
-  it('formats prefix and Chinese currency units cleanly', () => {
-    expect(formatAmount(1800, 'NT$')).toBe('NT$ 1,800');
-    expect(formatAmount(1800, '天幣')).toBe('1,800 天幣');
+  it('formats currency units cleanly for 新台幣, 天幣, and 贊助幣', () => {
     expect(formatAmount(1800, '新台幣')).toBe('1,800 新台幣');
+    expect(formatAmount(1800, '天幣')).toBe('1,800 天幣');
+    expect(formatAmount(1800, '贊助幣')).toBe('1,800 贊助幣');
   });
 
   it('classifies min, max, and normal amounts accurately', () => {

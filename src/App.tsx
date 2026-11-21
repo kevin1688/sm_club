@@ -19,13 +19,15 @@ import {
   Flame,
   Gem,
 } from 'lucide-react';
-import type {
-  DrawRecord,
-  DrawSettings,
-  DrawStageStep,
-  GitHubConfig,
-  SyncStatus,
-  WheelItem,
+import {
+  CURRENCY_UNITS,
+  type CurrencyUnit,
+  type DrawRecord,
+  type DrawSettings,
+  type DrawStageStep,
+  type GitHubConfig,
+  type SyncStatus,
+  type WheelItem,
 } from './types';
 import {
   classifyAmountTier,
@@ -109,10 +111,18 @@ export function App() {
   const [amounts, setAmounts] = useState<number[]>(() =>
     readStorage(STORAGE_KEYS.amounts, SAMPLE_AMOUNTS)
   );
-  const [settings, setSettings] = useState<DrawSettings>(() => ({
-    ...DEFAULT_SETTINGS,
-    ...readStorage<Partial<DrawSettings>>(STORAGE_KEYS.settings, {}),
-  }));
+  const [settings, setSettings] = useState<DrawSettings>(() => {
+    const saved = readStorage<Partial<DrawSettings>>(STORAGE_KEYS.settings, {});
+    const validUnit: CurrencyUnit =
+      saved.currencyUnit && (CURRENCY_UNITS as readonly string[]).includes(saved.currencyUnit)
+        ? saved.currencyUnit
+        : DEFAULT_SETTINGS.currencyUnit;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...saved,
+      currencyUnit: validUnit,
+    };
+  });
   const [records, setRecords] = useState<DrawRecord[]>(() =>
     readStorage(STORAGE_KEYS.records, [])
   );
