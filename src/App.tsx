@@ -79,7 +79,6 @@ const DEFAULT_SETTINGS: DrawSettings = {
   removeAmountAfterDraw: true,
   soundEnabled: true,
   volume: 0.75,
-  autoAdvanceToAmount: true,
 };
 
 const DEFAULT_GITHUB_CONFIG: GitHubConfig = {
@@ -151,7 +150,6 @@ export function App() {
     null
   );
 
-  const autoAdvanceTimerRef = useRef<number | null>(null);
   const recordsRef = useRef(records);
   recordsRef.current = records;
 
@@ -204,15 +202,6 @@ export function App() {
     const t = window.setTimeout(() => setToast(null), 4000);
     return () => window.clearTimeout(t);
   }, [toast]);
-
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoAdvanceTimerRef.current !== null) {
-        window.clearTimeout(autoAdvanceTimerRef.current);
-      }
-    };
-  }, []);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
@@ -312,10 +301,6 @@ export function App() {
   }, [githubConfig, showToast]);
 
   const handleResetToParticipantStage = useCallback(() => {
-    if (autoAdvanceTimerRef.current !== null) {
-      window.clearTimeout(autoAdvanceTimerRef.current);
-      autoAdvanceTimerRef.current = null;
-    }
     setShowResultOverlay(false);
     setLockedWinner(null);
     setLatestRecord(null);
@@ -346,10 +331,6 @@ export function App() {
     }
 
     if (stage === 'participant-locked') {
-      if (autoAdvanceTimerRef.current !== null) {
-        window.clearTimeout(autoAdvanceTimerRef.current);
-        autoAdvanceTimerRef.current = null;
-      }
       if (amounts.length === 0) {
         showToast('info', '金額池已空，請先補充金額！');
         setActiveTab('pool');
@@ -400,13 +381,7 @@ export function App() {
         setLockedWinner({ id: winnerId, index: selectedIndex });
         setStage('participant-locked');
         soundEngine.playParticipantLocked();
-
-        if (settings.autoAdvanceToAmount && amounts.length > 0) {
-          autoAdvanceTimerRef.current = window.setTimeout(() => {
-            autoAdvanceTimerRef.current = null;
-            setSpinRequestId((id) => id + 1);
-          }, 1150);
-        }
+        showToast('info', `已鎖定得標者「${winnerId}」，請手動點擊開始抽金額！`);
         return;
       }
 
@@ -471,7 +446,6 @@ export function App() {
       wheelMode,
       itemName,
       settings.currencyUnit,
-      settings.autoAdvanceToAmount,
       settings.removeWinnerAfterDraw,
       settings.removeAmountAfterDraw,
       amounts,
@@ -479,6 +453,7 @@ export function App() {
       lockedWinner,
       githubConfig,
       performGitHubSync,
+      showToast,
     ]
   );
 
@@ -511,9 +486,9 @@ export function App() {
       : stage === 'spinning-amount'
         ? '金額輪盤旋轉中...'
         : stage === 'participant-locked'
-          ? settings.autoAdvanceToAmount
-            ? '即將開抽金額（點此立即旋轉）'
-            : '開始抽獎金額'
+          ? lockedWinner
+            ? `第二步：為「${lockedWinner.id}」抽金額`
+            : '第二步：開始抽獎金額'
           : stage === 'result-revealed'
             ? '準備下一輪抽獎'
             : '開始抽獎（第一步：抽人物）';

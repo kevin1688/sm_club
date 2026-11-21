@@ -33,7 +33,6 @@ export interface DrawSettings {
   removeAmountAfterDraw: boolean;
   soundEnabled: boolean;
   volume: number; // 0 to 1
-  autoAdvanceToAmount: boolean;
 }
 
 export interface GitHubConfig {

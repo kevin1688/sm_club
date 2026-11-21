@@ -376,18 +376,6 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
           disabled={disabled}
           onChange={(val) => onUpdateSettings({ removeAmountAfterDraw: val })}
         />
-
-        <ToggleRow
-          label="抽完人物自動切換至金額輪盤"
-          description={
-            settings.autoAdvanceToAmount
-              ? '已開啟：鎖定人物後自動倒數進入金額抽選'
-              : '已關閉：鎖定人物後由手動點擊再抽金額'
-          }
-          checked={settings.autoAdvanceToAmount}
-          disabled={disabled}
-          onChange={(val) => onUpdateSettings({ autoAdvanceToAmount: val })}
-        />
       </section>
     </div>
   );
