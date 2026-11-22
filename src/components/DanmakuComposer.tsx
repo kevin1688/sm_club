@@ -12,6 +12,7 @@ import {
 interface DanmakuComposerProps {
   nickname: string;
   disabled: boolean;
+  compact?: boolean;
   onUpdateNickname: (next: string) => void;
   onSendDanmaku: (text: string, color: DanmakuColor) => void;
 }
@@ -26,6 +27,7 @@ const COLOR_OPTIONS: { key: DanmakuColor; label: string; dotClass: string }[] = 
 export const DanmakuComposer: React.FC<DanmakuComposerProps> = ({
   nickname,
   disabled,
+  compact = false,
   onUpdateNickname,
   onSendDanmaku,
 }) => {
@@ -74,53 +76,59 @@ export const DanmakuComposer: React.FC<DanmakuComposerProps> = ({
   const isCoolingDown = cooldownLeftMs > 0;
 
   return (
-    <div className="mt-5 w-full rounded-xl border border-[#7C3AED]/40 bg-[#0F0F23]/85 p-3.5 space-y-3">
-      {/* Header + Nickname + Color Picker */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-bold text-white">
-          <MessageSquare className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
-          <span>發射互動彈幕</span>
-          <label htmlFor="danmaku-nickname" className="sr-only">
-            您的彈幕暱稱
-          </label>
-          <input
-            id="danmaku-nickname"
-            type="text"
-            maxLength={16}
-            value={nickname}
-            onChange={(e) => onUpdateNickname(e.target.value)}
-            placeholder="輸入暱稱"
-            className="w-28 rounded-lg border border-white/15 bg-[#1E1C35] px-2 py-1 text-xs font-semibold text-[#E2E8F0] placeholder-[#64748B] focus:border-[#A78BFA] focus:outline-none focus:ring-1 focus:ring-[#A78BFA]"
-          />
-        </div>
+    <div
+      className={`w-full rounded-xl border border-[#7C3AED]/45 bg-[#0F0F23]/90 ${
+        compact ? 'mt-2 max-w-2xl p-2.5 space-y-2 shadow-2xl' : 'mt-5 p-3.5 space-y-3'
+      }`}
+    >
+      {/* Header + Nickname + Color Picker (collapsed into compact strip during Spotlight mode) */}
+      {!compact && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-white">
+            <MessageSquare className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
+            <span>發射互動彈幕</span>
+            <label htmlFor="danmaku-nickname" className="sr-only">
+              您的彈幕暱稱
+            </label>
+            <input
+              id="danmaku-nickname"
+              type="text"
+              maxLength={16}
+              value={nickname}
+              onChange={(e) => onUpdateNickname(e.target.value)}
+              placeholder="輸入暱稱"
+              className="w-28 rounded-lg border border-white/15 bg-[#1E1C35] px-2 py-1 text-xs font-semibold text-[#E2E8F0] placeholder-[#64748B] focus:border-[#A78BFA] focus:outline-none focus:ring-1 focus:ring-[#A78BFA]"
+            />
+          </div>
 
-        {/* Color Pills */}
-        <div className="flex items-center gap-1.5" role="radiogroup" aria-label="彈幕顏色">
-          {COLOR_OPTIONS.map((opt) => {
-            const active = color === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={opt.label}
-                onClick={() => setColor(opt.key)}
-                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
-                  active
-                    ? 'scale-110 border-white bg-white/15'
-                    : 'border-white/15 bg-black/30 hover:border-white/40'
-                }`}
-              >
-                <span className={`h-3.5 w-3.5 rounded-full ${opt.dotClass}`} />
-              </button>
-            );
-          })}
+          {/* Color Pills */}
+          <div className="flex items-center gap-1.5" role="radiogroup" aria-label="彈幕顏色">
+            {COLOR_OPTIONS.map((opt) => {
+              const active = color === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={opt.label}
+                  onClick={() => setColor(opt.key)}
+                  className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
+                    active
+                      ? 'scale-110 border-white bg-white/15'
+                      : 'border-white/15 bg-black/30 hover:border-white/40'
+                  }`}
+                >
+                  <span className={`h-3.5 w-3.5 rounded-full ${opt.dotClass}`} />
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Quick Cheer Presets */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
         {QUICK_DANMAKU_PRESETS.map((preset) => (
           <button
             key={preset.label}

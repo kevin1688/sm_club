@@ -21,6 +21,7 @@ import {
   Radio,
   Monitor,
   Tv,
+  Minimize2,
 } from 'lucide-react';
 import {
   type CurrencyUnit,
@@ -225,12 +226,18 @@ export function App() {
   const [viewerLatestRecord, setViewerLatestRecord] = useState<DrawRecord | null>(null);
   const [viewerShowOverlay, setViewerShowOverlay] = useState<boolean>(false);
 
+  // Full-viewport Spotlight mode while wheel spins + brief post-spin reveal beat
+  const [spotlightActive, setSpotlightActive] = useState<boolean>(false);
+  const [spotlightBanner, setSpotlightBanner] = useState<string | null>(null);
+
   const recordsRef = useRef(records);
   recordsRef.current = records;
   const activeHostSpinRef = useRef<SyncedSpinCommand | null>(null);
   const pendingViewerResultRef = useRef<DrawRecord | null>(null);
   const viewerAnimatingRef = useRef<boolean>(false);
   const viewerActiveSpinIdRef = useRef<string>('');
+  const spotlightExitTimerRef = useRef<number | null>(null);
+  const resultOverlayTimerRef = useRef<number | null>(null);
 
   const isLiveMode = appMode === 'live';
   const isLiveConnected = isLiveMode && Boolean(roomCode) && connectionState === 'connected';
@@ -291,12 +298,45 @@ export function App() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  // Cleanup realtime channel on page unmount
+  // Cleanup realtime channel & timers on page unmount
   useEffect(() => {
     return () => {
+      if (spotlightExitTimerRef.current !== null) {
+        window.clearTimeout(spotlightExitTimerRef.current);
+      }
+      if (resultOverlayTimerRef.current !== null) {
+        window.clearTimeout(resultOverlayTimerRef.current);
+      }
       void realtimeRoomService.disconnect();
     };
   }, []);
+
+  // Lock background page scroll while Spotlight Cinema Mode is active
+  useEffect(() => {
+    if (!spotlightActive) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [spotlightActive]);
+
+  const clearSpotlightTimers = useCallback(() => {
+    if (spotlightExitTimerRef.current !== null) {
+      window.clearTimeout(spotlightExitTimerRef.current);
+      spotlightExitTimerRef.current = null;
+    }
+    if (resultOverlayTimerRef.current !== null) {
+      window.clearTimeout(resultOverlayTimerRef.current);
+      resultOverlayTimerRef.current = null;
+    }
+  }, []);
+
+  const exitSpotlightNow = useCallback(() => {
+    clearSpotlightTimers();
+    setSpotlightActive(false);
+    setSpotlightBanner(null);
+  }, [clearSpotlightTimers]);
 
   const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
     setToast({ type, text });
@@ -499,6 +539,7 @@ export function App() {
   }, [githubConfig, showToast]);
 
   const handleResetToParticipantStage = useCallback(() => {
+    exitSpotlightNow();
     if (isLiveViewer) {
       setViewerShowOverlay(false);
       return;
@@ -511,7 +552,7 @@ export function App() {
     if (isLiveHost && connectionState === 'connected') {
       void realtimeRoomService.broadcastStageReset();
     }
-  }, [isLiveViewer, isLiveHost, connectionState]);
+  }, [exitSpotlightNow, isLiveViewer, isLiveHost, connectionState]);
 
   const handleTriggerSpin = useCallback(() => {
     if (isLiveViewer || isSpinning) return;
@@ -584,6 +625,9 @@ export function App() {
   }, [isLiveViewer, githubModalOpen, roomModalOpen, displayShowOverlay, handleTriggerSpin]);
 
   const handleSpinStart = useCallback(() => {
+    clearSpotlightTimers();
+    setSpotlightBanner(null);
+    setSpotlightActive(true);
     if (isLiveViewer) {
       viewerAnimatingRef.current = true;
       setViewerStage((prev) =>
@@ -594,7 +638,7 @@ export function App() {
     setStage((prev) =>
       prev === 'ready-participant' ? 'spinning-participant' : 'spinning-amount'
     );
-  }, [isLiveViewer]);
+  }, [clearSpotlightTimers, isLiveViewer]);
 
   const handleHostSpinDispatched = useCallback(
     (command: SyncedSpinCommand) => {
@@ -610,6 +654,13 @@ export function App() {
 
   const handleSpinComplete = useCallback(
     (selectedIndex: number, item: WheelItem) => {
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const stage1HoldMs = prefersReduced ? 350 : 1450;
+      const stage2HoldMs = prefersReduced ? 250 : 800;
+
       // Viewer finished synced wheel animation
       if (isLiveViewer) {
         viewerAnimatingRef.current = false;
@@ -618,6 +669,12 @@ export function App() {
           setViewerLockedWinner({ id: winnerId, index: selectedIndex });
           setViewerStage('participant-locked');
           soundEngine.playParticipantLocked();
+          setSpotlightBanner(`鎖定得標者：${winnerId}`);
+          spotlightExitTimerRef.current = window.setTimeout(() => {
+            spotlightExitTimerRef.current = null;
+            setSpotlightActive(false);
+            setSpotlightBanner(null);
+          }, stage1HoldMs);
           return;
         }
 
@@ -627,14 +684,6 @@ export function App() {
         const { tier, poolMin, poolMax } = hostRec
           ? { tier: hostRec.tier, poolMin: hostRec.poolMin, poolMax: hostRec.poolMax }
           : classifyAmountTier(drawnAmount, displayAmounts);
-
-        if (tier === 'min') {
-          soundEngine.playLuckyMinFanfare();
-        } else if (tier === 'max') {
-          soundEngine.playMaxPriceDrama();
-        } else {
-          soundEngine.playNormalResult();
-        }
 
         const revealed: DrawRecord = hostRec ?? {
           id: `vrec_${Date.now()}`,
@@ -652,7 +701,23 @@ export function App() {
         pendingViewerResultRef.current = null;
         setViewerLatestRecord(revealed);
         setViewerStage('result-revealed');
-        setViewerShowOverlay(true);
+        setSpotlightBanner(
+          `${winnerId} × ${formatAmount(drawnAmount, revealed.currencyUnit)}`
+        );
+
+        resultOverlayTimerRef.current = window.setTimeout(() => {
+          resultOverlayTimerRef.current = null;
+          if (tier === 'min') {
+            soundEngine.playLuckyMinFanfare();
+          } else if (tier === 'max') {
+            soundEngine.playMaxPriceDrama();
+          } else {
+            soundEngine.playNormalResult();
+          }
+          setSpotlightActive(false);
+          setSpotlightBanner(null);
+          setViewerShowOverlay(true);
+        }, stage2HoldMs);
         return;
       }
 
@@ -666,6 +731,12 @@ export function App() {
         soundEngine.playParticipantLocked();
         showToast('info', `已鎖定得標者「${winnerId}」，請手動點擊開始抽金額！`);
         emitSystemDanmaku(`人物揭曉！本輪由「${winnerId}」進入金額抽選！`, 'system-info', 'gold');
+        setSpotlightBanner(`鎖定得標者：${winnerId}`);
+        spotlightExitTimerRef.current = window.setTimeout(() => {
+          spotlightExitTimerRef.current = null;
+          setSpotlightActive(false);
+          setSpotlightBanner(null);
+        }, stage1HoldMs);
         return;
       }
 
@@ -673,14 +744,6 @@ export function App() {
       const drawnAmount = Number(item.rawValue);
       const winnerId = lockedWinner?.id ?? '未知得標者';
       const { tier, poolMin, poolMax } = classifyAmountTier(drawnAmount, amounts);
-
-      if (tier === 'min') {
-        soundEngine.playLuckyMinFanfare();
-      } else if (tier === 'max') {
-        soundEngine.playMaxPriceDrama();
-      } else {
-        soundEngine.playNormalResult();
-      }
 
       const resolvedItemName = itemName.trim() || '未指定項目';
       const resolvedUnit = settings.currencyUnit.trim() || '天幣';
@@ -704,7 +767,22 @@ export function App() {
       setRecords(nextRecords);
       setLatestRecord(newRecord);
       setStage('result-revealed');
-      setShowResultOverlay(true);
+      setSpotlightBanner(`${winnerId} × ${formatAmount(drawnAmount, resolvedUnit)}`);
+
+      // Brief dramatic beat on the landed slice before launching full-screen result celebration
+      resultOverlayTimerRef.current = window.setTimeout(() => {
+        resultOverlayTimerRef.current = null;
+        if (tier === 'min') {
+          soundEngine.playLuckyMinFanfare();
+        } else if (tier === 'max') {
+          soundEngine.playMaxPriceDrama();
+        } else {
+          soundEngine.playNormalResult();
+        }
+        setSpotlightActive(false);
+        setSpotlightBanner(null);
+        setShowResultOverlay(true);
+      }, stage2HoldMs);
 
       // Broadcast finalized result + celebration danmaku when hosting
       if (isLiveHost && connectionState === 'connected') {
@@ -790,6 +868,7 @@ export function App() {
   const handleLeaveRoom = useCallback(
     async (switchToClassic = false) => {
       await realtimeRoomService.disconnect();
+      exitSpotlightNow();
       activeHostSpinRef.current = null;
       pendingViewerResultRef.current = null;
       viewerAnimatingRef.current = false;
@@ -1246,134 +1325,210 @@ export function App() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-          {/* LEFT STAGE: Roulette Arena (7 cols) */}
+          {/* LEFT STAGE: Roulette Arena (expands seamlessly into full-viewport Spotlight while spinning!) */}
           <section
             aria-label="輪盤抽獎主舞台"
-            className="arcade-stage rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center"
+            className={
+              spotlightActive
+                ? 'fixed inset-0 z-40 flex flex-col items-center justify-between overflow-y-auto bg-[radial-gradient(circle_at_50%_40%,rgba(124,58,237,0.28),rgba(9,8,24,0.97)_68%)] px-4 py-4 sm:px-8 sm:py-5 backdrop-blur-xl transition-all duration-300'
+                : 'arcade-stage rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center'
+            }
           >
+            {/* Spotlight Compact Top Header (Only shown when expanded) */}
+            {spotlightActive && (
+              <div className="mb-2 flex w-full max-w-4xl items-center justify-between gap-3 rounded-xl border border-[#7C3AED]/45 bg-[#14122B]/90 px-4 py-2.5 shadow-xl">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F43F5E]/20 px-2.5 py-1 text-xs font-bold text-[#FECDD3]">
+                    <Gem className="h-3.5 w-3.5 text-[#FB7185]" aria-hidden="true" />
+                    <span className="max-w-[160px] truncate">
+                      {displayItemName.trim() || '未指定項目'}
+                    </span>
+                  </span>
+                  {displayLockedWinner && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C3AED]/25 px-2.5 py-1 text-xs font-bold text-[#EDE9FE]">
+                      <Users className="h-3.5 w-3.5 text-[#C4B5FD]" aria-hidden="true" />
+                      <span>得標者：{displayLockedWinner.id}</span>
+                    </span>
+                  )}
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      wheelMode === 'participant'
+                        ? 'bg-[#7C3AED]/25 text-[#DDD6FE]'
+                        : 'bg-[#F59E0B]/20 text-[#FDE68A]'
+                    }`}
+                  >
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    <span>
+                      {wheelMode === 'participant'
+                        ? '第一步：抽出人物 ID'
+                        : `第二步：抽出得標金額（${displayCurrencyUnit}）`}
+                    </span>
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hadPendingOverlay = resultOverlayTimerRef.current !== null;
+                    exitSpotlightNow();
+                    if (hadPendingOverlay) {
+                      if (isLiveViewer) {
+                        setViewerShowOverlay(true);
+                      } else {
+                        setShowResultOverlay(true);
+                      }
+                    }
+                  }}
+                  aria-label="收合回標準畫面"
+                  className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-[#0F0F23]/80 px-3 py-1.5 text-xs font-semibold text-[#E2E8F0] transition-colors hover:border-[#A78BFA]/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">收合</span>
+                </button>
+              </div>
+            )}
+
             {/* Upper Visual Arena: Danmaku floats ONLY above this zone so buttons & danmaku input are NEVER overlapped */}
-            <div className="relative flex w-full flex-col items-center">
+            <div
+              className={`relative flex w-full flex-col items-center ${
+                spotlightActive ? 'flex-1 justify-center max-w-5xl min-h-0' : ''
+              }`}
+            >
               {/* Multi-Track Danmaku Overlay (Only mounted in Live Mode when in a room) */}
               {isLiveMode && Boolean(roomCode) && (
                 <DanmakuOverlay messages={danmakuMessages} visible={danmakuVisible} />
               )}
 
-              {/* Target Auction Item Banner */}
-              <div className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl border border-[#F43F5E]/45 bg-gradient-to-r from-[#F43F5E]/15 via-[#7C3AED]/15 to-[#0F0F23]/80 px-4 py-2.5">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F43F5E]/20 text-[#FB7185]">
-                    <Gem className="h-4 w-4" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#FECDD3]">
-                      本次搶標項目
-                    </div>
-                    <div className="truncate font-display text-base sm:text-lg text-white">
-                      {displayItemName.trim() || '未指定項目（請於右側輸入）'}
-                    </div>
-                  </div>
+              {/* Spotlight Post-Spin Reveal Callout Banner */}
+              {spotlightActive && spotlightBanner && (
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#FBBF24] bg-[#2D1B06]/95 px-5 py-1.5 font-display text-sm sm:text-base text-[#FEF08A] shadow-[0_0_28px_rgba(251,191,36,0.45)] animate-reveal-pop">
+                  <Crown className="h-4 w-4 text-[#FBBF24]" aria-hidden="true" />
+                  <span>{spotlightBanner}</span>
                 </div>
-                {!isLiveViewer && (
-                  <button
-                    type="button"
-                    disabled={isSpinning}
-                    onClick={() => {
-                      setActiveTab('pool');
-                      window.setTimeout(() => {
-                        document.getElementById('auction-item-input')?.focus();
-                      }, 50);
-                    }}
-                    className="shrink-0 cursor-pointer rounded-lg border border-white/15 bg-[#0F0F23]/70 px-3 py-1.5 text-xs font-semibold text-[#E2E8F0] transition-colors hover:border-[#FB7185]/60 hover:text-white disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
-                  >
-                    更換項目
-                  </button>
-                )}
-              </div>
+              )}
 
-              {/* Current Round Matchup Scoreboard */}
-              <div className="mb-5 grid w-full grid-cols-2 gap-3">
-                <div
-                  className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                    displayLockedWinner
-                      ? 'border-[#A78BFA]/70 bg-[#7C3AED]/20 shadow-[0_0_24px_rgba(124,58,237,0.25)]'
-                      : 'border-white/10 bg-[#0F0F23]/75'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                    <Users className="h-3.5 w-3.5 text-[#A78BFA]" aria-hidden="true" />
-                    <span>本輪得標人物 ID</span>
+              {/* Standard Header & Scoreboard (Hidden while expanded in Spotlight mode to maximize wheel size) */}
+              {!spotlightActive && (
+                <>
+                  {/* Target Auction Item Banner */}
+                  <div className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl border border-[#F43F5E]/45 bg-gradient-to-r from-[#F43F5E]/15 via-[#7C3AED]/15 to-[#0F0F23]/80 px-4 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F43F5E]/20 text-[#FB7185]">
+                        <Gem className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#FECDD3]">
+                          本次搶標項目
+                        </div>
+                        <div className="truncate font-display text-base sm:text-lg text-white">
+                          {displayItemName.trim() || '未指定項目（請於右側輸入）'}
+                        </div>
+                      </div>
+                    </div>
+                    {!isLiveViewer && (
+                      <button
+                        type="button"
+                        disabled={isSpinning}
+                        onClick={() => {
+                          setActiveTab('pool');
+                          window.setTimeout(() => {
+                            document.getElementById('auction-item-input')?.focus();
+                          }, 50);
+                        }}
+                        className="shrink-0 cursor-pointer rounded-lg border border-white/15 bg-[#0F0F23]/70 px-3 py-1.5 text-xs font-semibold text-[#E2E8F0] transition-colors hover:border-[#FB7185]/60 hover:text-white disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+                      >
+                        更換項目
+                      </button>
+                    )}
                   </div>
-                  <div className="mt-1 truncate font-display text-lg sm:text-xl text-white">
-                    {displayLockedWinner ? displayLockedWinner.id : '待抽出...'}
-                  </div>
-                </div>
 
-                <div
-                  className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                    displayLatestRecord
-                      ? displayLatestRecord.tier === 'min'
-                        ? 'border-[#10B981]/70 bg-[#10B981]/20'
-                        : displayLatestRecord.tier === 'max'
-                          ? 'border-[#F43F5E]/70 bg-[#F43F5E]/20'
-                          : 'border-[#F59E0B]/60 bg-[#F59E0B]/15'
-                      : 'border-white/10 bg-[#0F0F23]/75'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                    <Coins className="h-3.5 w-3.5 text-[#FBBF24]" aria-hidden="true" />
-                    <span>本輪得標金額</span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span
-                      className={`truncate font-display text-lg sm:text-xl tabular-nums ${
-                        displayLatestRecord
-                          ? displayLatestRecord.tier === 'min'
-                            ? 'text-[#34D399]'
-                            : displayLatestRecord.tier === 'max'
-                              ? 'text-[#FB7185]'
-                              : 'text-[#FDE68A]'
-                          : 'text-[#94A3B8]'
+                  {/* Current Round Matchup Scoreboard */}
+                  <div className="mb-5 grid w-full grid-cols-2 gap-3">
+                    <div
+                      className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
+                        displayLockedWinner
+                          ? 'border-[#A78BFA]/70 bg-[#7C3AED]/20 shadow-[0_0_24px_rgba(124,58,237,0.25)]'
+                          : 'border-white/10 bg-[#0F0F23]/75'
                       }`}
                     >
-                      {displayLatestRecord
-                        ? formatAmount(displayLatestRecord.amount, displayLatestRecord.currencyUnit)
-                        : '待抽出...'}
-                    </span>
-                    {displayLatestRecord?.tier === 'min' && (
-                      <Crown className="h-4 w-4 shrink-0 text-[#FDE68A]" aria-hidden="true" />
-                    )}
-                    {displayLatestRecord?.tier === 'max' && (
-                      <Flame className="h-4 w-4 shrink-0 text-[#FB7185]" aria-hidden="true" />
-                    )}
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                        <Users className="h-3.5 w-3.5 text-[#A78BFA]" aria-hidden="true" />
+                        <span>本輪得標人物 ID</span>
+                      </div>
+                      <div className="mt-1 truncate font-display text-lg sm:text-xl text-white">
+                        {displayLockedWinner ? displayLockedWinner.id : '待抽出...'}
+                      </div>
+                    </div>
+
+                    <div
+                      className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
+                        displayLatestRecord
+                          ? displayLatestRecord.tier === 'min'
+                            ? 'border-[#10B981]/70 bg-[#10B981]/20'
+                            : displayLatestRecord.tier === 'max'
+                              ? 'border-[#F43F5E]/70 bg-[#F43F5E]/20'
+                              : 'border-[#F59E0B]/60 bg-[#F59E0B]/15'
+                          : 'border-white/10 bg-[#0F0F23]/75'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                        <Coins className="h-3.5 w-3.5 text-[#FBBF24]" aria-hidden="true" />
+                        <span>本輪得標金額</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span
+                          className={`truncate font-display text-lg sm:text-xl tabular-nums ${
+                            displayLatestRecord
+                              ? displayLatestRecord.tier === 'min'
+                                ? 'text-[#34D399]'
+                                : displayLatestRecord.tier === 'max'
+                                  ? 'text-[#FB7185]'
+                                  : 'text-[#FDE68A]'
+                              : 'text-[#94A3B8]'
+                          }`}
+                        >
+                          {displayLatestRecord
+                            ? formatAmount(displayLatestRecord.amount, displayLatestRecord.currencyUnit)
+                            : '待抽出...'}
+                        </span>
+                        {displayLatestRecord?.tier === 'min' && (
+                          <Crown className="h-4 w-4 shrink-0 text-[#FDE68A]" aria-hidden="true" />
+                        )}
+                        {displayLatestRecord?.tier === 'max' && (
+                          <Flame className="h-4 w-4 shrink-0 text-[#FB7185]" aria-hidden="true" />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Active Mode Badge */}
-              <div className="mb-2 flex items-center gap-2 text-xs font-bold">
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${
-                    wheelMode === 'participant'
-                      ? 'bg-[#7C3AED]/25 text-[#DDD6FE] border border-[#7C3AED]/50'
-                      : 'bg-[#F59E0B]/20 text-[#FDE68A] border border-[#F59E0B]/50'
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>
-                    {wheelMode === 'participant'
-                      ? `人物輪盤模式（剩餘 ${displayParticipants.length} 位）`
-                      : `金額輪盤模式（剩餘 ${displayAmounts.length} 筆｜${displayCurrencyUnit}）`}
-                  </span>
-                </span>
-              </div>
+                  {/* Active Mode Badge */}
+                  <div className="mb-2 flex items-center gap-2 text-xs font-bold">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${
+                        wheelMode === 'participant'
+                          ? 'bg-[#7C3AED]/25 text-[#DDD6FE] border border-[#7C3AED]/50'
+                          : 'bg-[#F59E0B]/20 text-[#FDE68A] border border-[#F59E0B]/50'
+                      }`}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>
+                        {wheelMode === 'participant'
+                          ? `人物輪盤模式（剩餘 ${displayParticipants.length} 位）`
+                          : `金額輪盤模式（剩餘 ${displayAmounts.length} 筆｜${displayCurrencyUnit}）`}
+                      </span>
+                    </span>
+                  </div>
+                </>
+              )}
 
-              {/* The Canvas Roulette Wheel */}
+              {/* The Canvas Roulette Wheel (exact same instance — zero remount or frame drop!) */}
               <RouletteWheel
                 items={wheelItems}
                 mode={wheelMode}
                 isSpinning={isSpinning}
                 disabled={!canStartDraw}
                 readOnly={isLiveViewer}
+                expanded={spotlightActive}
                 actionLabel={primaryActionLabel}
                 accentMode={wheelAccentMode}
                 spinRequestId={spinRequestId}
@@ -1385,62 +1540,65 @@ export function App() {
               />
             </div>
 
-            {/* Primary Stage Controls */}
-            <div className="mt-6 flex w-full max-w-md flex-col gap-2.5">
-              {isLiveViewer ? (
-                <div className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-xl border border-[#7C3AED]/45 bg-[#17142E]/90 px-4 py-3 text-xs font-bold text-[#DDD6FE]">
-                  <Tv className="h-4 w-4 text-[#A78BFA] shrink-0" aria-hidden="true" />
-                  <span>{primaryActionLabel}</span>
-                </div>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    disabled={!canStartDraw}
-                    onClick={handleTriggerSpin}
-                    className={`flex min-h-[54px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-display text-base tracking-wide shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] disabled:cursor-not-allowed disabled:opacity-45 ${
-                      wheelMode === 'amount' && stage !== 'result-revealed'
-                        ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#0F0F23] hover:brightness-110'
-                        : stage === 'result-revealed'
-                          ? 'bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] text-white hover:brightness-110'
-                          : 'bg-gradient-to-r from-[#F43F5E] to-[#E11D48] text-white hover:brightness-110'
-                    }`}
-                  >
-                    {stage === 'result-revealed' ? (
-                      <RotateCcw className="h-5 w-5" aria-hidden="true" />
-                    ) : (
-                      <Play className="h-5 w-5 fill-current" aria-hidden="true" />
-                    )}
+            {/* Primary Stage Controls (Hidden during Spotlight to keep focus pure) */}
+            {!spotlightActive && (
+              <div className="mt-6 flex w-full max-w-md flex-col gap-2.5">
+                {isLiveViewer ? (
+                  <div className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-xl border border-[#7C3AED]/45 bg-[#17142E]/90 px-4 py-3 text-xs font-bold text-[#DDD6FE]">
+                    <Tv className="h-4 w-4 text-[#A78BFA] shrink-0" aria-hidden="true" />
                     <span>{primaryActionLabel}</span>
-                  </button>
-
-                  <div className="flex items-center justify-between text-[11px] text-[#94A3B8] px-1">
-                    <span>
-                      快捷鍵：按{' '}
-                      <kbd className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[#E2E8F0]">
-                        Space
-                      </kbd>{' '}
-                      旋轉輪盤
-                    </span>
-                    {(stage === 'participant-locked' || stage === 'result-revealed') && (
-                      <button
-                        type="button"
-                        onClick={handleResetToParticipantStage}
-                        className="cursor-pointer font-semibold text-[#A78BFA] hover:text-white underline-offset-2 hover:underline"
-                      >
-                        重設本輪狀態
-                      </button>
-                    )}
                   </div>
-                </>
-              )}
-            </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!canStartDraw}
+                      onClick={handleTriggerSpin}
+                      className={`flex min-h-[54px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-display text-base tracking-wide shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] disabled:cursor-not-allowed disabled:opacity-45 ${
+                        wheelMode === 'amount' && stage !== 'result-revealed'
+                          ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#0F0F23] hover:brightness-110'
+                          : stage === 'result-revealed'
+                            ? 'bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] text-white hover:brightness-110'
+                            : 'bg-gradient-to-r from-[#F43F5E] to-[#E11D48] text-white hover:brightness-110'
+                      }`}
+                    >
+                      {stage === 'result-revealed' ? (
+                        <RotateCcw className="h-5 w-5" aria-hidden="true" />
+                      ) : (
+                        <Play className="h-5 w-5 fill-current" aria-hidden="true" />
+                      )}
+                      <span>{primaryActionLabel}</span>
+                    </button>
 
-            {/* Live Danmaku Composer (Only shown in Live Mode when joined/hosting a room) */}
+                    <div className="flex items-center justify-between text-[11px] text-[#94A3B8] px-1">
+                      <span>
+                        快捷鍵：按{' '}
+                        <kbd className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[#E2E8F0]">
+                          Space
+                        </kbd>{' '}
+                        旋轉輪盤
+                      </span>
+                      {(stage === 'participant-locked' || stage === 'result-revealed') && (
+                        <button
+                          type="button"
+                          onClick={handleResetToParticipantStage}
+                          className="cursor-pointer font-semibold text-[#A78BFA] hover:text-white underline-offset-2 hover:underline"
+                        >
+                          重設本輪狀態
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Live Danmaku Composer (Remains accessible in compact form during Spotlight so viewers can cheer mid-spin!) */}
             {isLiveMode && Boolean(roomCode) && (
               <DanmakuComposer
                 nickname={nickname}
                 disabled={!isLiveConnected}
+                compact={spotlightActive}
                 onUpdateNickname={setNickname}
                 onSendDanmaku={handleSendUserDanmaku}
               />

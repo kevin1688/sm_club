@@ -15,6 +15,7 @@ interface RouletteWheelProps {
   isSpinning: boolean;
   disabled: boolean;
   readOnly?: boolean;
+  expanded?: boolean;
   actionLabel: string;
   accentMode?: 'default' | 'min' | 'max';
   spinRequestId: number;
@@ -56,6 +57,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   isSpinning,
   disabled,
   readOnly = false,
+  expanded = false,
   actionLabel,
   accentMode = 'default',
   spinRequestId,
@@ -250,8 +252,10 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
 
-        const fontSize =
+        const baseFontSize =
           count <= 6 ? 16 : count <= 10 ? 14 : count <= 16 ? 12 : count <= 24 ? 10 : 8.5;
+        const sizeScale = Math.max(0.95, Math.min(1.42, displaySize / 430));
+        const fontSize = Math.round(baseFontSize * sizeScale * 10) / 10;
         const maxChars = count <= 8 ? 13 : count <= 16 ? 10 : 7;
 
         ctx.font = `700 ${fontSize}px "Chakra Petch", "Noto Sans TC", sans-serif`;
@@ -557,7 +561,9 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       {/* Live pointer readout pill */}
       <div
         aria-live="polite"
-        className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold shadow-lg transition-all duration-300 ${
+        className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-semibold shadow-lg transition-all duration-300 ${
+          expanded ? 'text-base sm:text-lg px-5 py-2' : 'text-sm'
+        } ${
           isSuspensePhase
             ? 'border-[#F43F5E] bg-[#2D0E1F]/95 text-[#FFE4E6] shadow-[0_0_24px_rgba(244,63,94,0.45)]'
             : 'border-[#7C3AED]/50 bg-[#0F0F23]/90 text-[#E2E8F0]'
@@ -570,13 +576,19 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         <span className={isSuspensePhase ? 'text-[#FDA4AF]' : 'text-[#94A3B8]'}>
           {isSuspensePhase ? '即將揭曉：' : '指針位置：'}
         </span>
-        <span className="max-w-[200px] truncate font-bold text-white tabular-nums">
+        <span className="max-w-[240px] truncate font-bold text-white tabular-nums">
           {liveHoverLabel || (items.length === 0 ? '請先新增名單' : '準備就緒')}
         </span>
       </div>
 
       {/* Wheel Canvas + Interactive Center Hub */}
-      <div className="relative w-full max-w-[440px] aspect-square flex items-center justify-center">
+      <div
+        className={`relative w-full aspect-square flex items-center justify-center transition-all duration-300 ${
+          expanded
+            ? 'max-w-[min(88vw,60vh,580px)] sm:max-w-[min(82vw,64vh,600px)]'
+            : 'max-w-[440px]'
+        }`}
+      >
         <canvas
           ref={canvasRef}
           className="h-full w-full block"
@@ -589,7 +601,9 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
           onClick={onTriggerSpin}
           disabled={!canClickHub}
           aria-label={actionLabel}
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[6px] flex h-[86px] w-[86px] flex-col items-center justify-center rounded-full border-2 font-display text-xs tracking-wider shadow-[0_10px_25px_rgba(0,0,0,0.75)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] ${
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[6px] flex flex-col items-center justify-center rounded-full border-2 font-display text-xs tracking-wider shadow-[0_10px_25px_rgba(0,0,0,0.75)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] ${
+            expanded ? 'h-[92px] w-[92px] sm:h-[104px] sm:w-[104px]' : 'h-[86px] w-[86px]'
+          } ${
             canClickHub
               ? mode === 'amount'
                 ? 'cursor-pointer border-[#FDE68A] bg-gradient-to-b from-[#F59E0B] to-[#D97706] text-[#0F0F23] hover:brightness-110 active:scale-95'
