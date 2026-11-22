@@ -230,6 +230,8 @@ export function App() {
   recordsRef.current = records;
   const activeHostSpinRef = useRef<SyncedSpinCommand | null>(null);
   const pendingViewerResultRef = useRef<DrawRecord | null>(null);
+  const viewerAnimatingRef = useRef<boolean>(false);
+  const viewerActiveSpinIdRef = useRef<string>('');
 
   const isLiveMode = appMode === 'live';
   const isLiveConnected = isLiveMode && Boolean(roomCode) && connectionState === 'connected';
@@ -584,6 +586,7 @@ export function App() {
 
   const handleSpinStart = useCallback(() => {
     if (isLiveViewer) {
+      viewerAnimatingRef.current = true;
       setViewerStage((prev) =>
         prev === 'ready-participant' ? 'spinning-participant' : 'spinning-amount'
       );
@@ -610,6 +613,7 @@ export function App() {
     (selectedIndex: number, item: WheelItem) => {
       // Viewer finished synced wheel animation
       if (isLiveViewer) {
+        viewerAnimatingRef.current = false;
         if (wheelMode === 'participant') {
           const winnerId = String(item.rawValue);
           setViewerLockedWinner({ id: winnerId, index: selectedIndex });
@@ -789,6 +793,8 @@ export function App() {
       await realtimeRoomService.disconnect();
       activeHostSpinRef.current = null;
       pendingViewerResultRef.current = null;
+      viewerAnimatingRef.current = false;
+      viewerActiveSpinIdRef.current = '';
       setRoomCode('');
       setConnectionState('disconnected');
       setConnectionError(null);
@@ -832,6 +838,8 @@ export function App() {
     setRoomModalOpen(false);
     setConnectionError(null);
     setDanmakuMessages([]);
+    viewerAnimatingRef.current = false;
+    viewerActiveSpinIdRef.current = '';
     setExternalSpin(null);
     setViewerShowOverlay(false);
     updateUrlRoomParam(chosenCode);
@@ -859,23 +867,39 @@ export function App() {
       onStateSnapshot: (snapshot) => {
         if (role !== 'viewer') return;
         setViewerSnapshot(snapshot);
+
+        // If viewer is currently mid-spin, do not interrupt the local wheel animation with host's periodic STATE_SYNC
+        if (viewerAnimatingRef.current) {
+          if (snapshot.latestRecord) {
+            pendingViewerResultRef.current = snapshot.latestRecord;
+          }
+          return;
+        }
+
         setViewerLockedWinner(snapshot.lockedWinner);
         setViewerLatestRecord(snapshot.latestRecord);
 
         if (snapshot.activeSpin) {
-          setViewerShowOverlay(false);
-          setViewerStage(
-            snapshot.activeSpin.mode === 'participant'
-              ? 'spinning-participant'
-              : 'spinning-amount'
-          );
-          setExternalSpin(snapshot.activeSpin);
+          if (snapshot.activeSpin.spinId !== viewerActiveSpinIdRef.current) {
+            viewerActiveSpinIdRef.current = snapshot.activeSpin.spinId;
+            viewerAnimatingRef.current = true;
+            setViewerShowOverlay(false);
+            setViewerStage(
+              snapshot.activeSpin.mode === 'participant'
+                ? 'spinning-participant'
+                : 'spinning-amount'
+            );
+            setExternalSpin(snapshot.activeSpin);
+          }
         } else {
           setViewerStage(snapshot.stage);
         }
       },
       onSpinStart: (command) => {
         if (role !== 'viewer') return;
+        if (command.spinId === viewerActiveSpinIdRef.current) return;
+        viewerActiveSpinIdRef.current = command.spinId;
+        viewerAnimatingRef.current = true;
         pendingViewerResultRef.current = null;
         setViewerShowOverlay(false);
         setViewerStage(
@@ -899,6 +923,8 @@ export function App() {
       onStageReset: () => {
         if (role !== 'viewer') return;
         pendingViewerResultRef.current = null;
+        viewerAnimatingRef.current = false;
+        viewerActiveSpinIdRef.current = '';
         setViewerShowOverlay(false);
         setViewerLockedWinner(null);
         setViewerLatestRecord(null);

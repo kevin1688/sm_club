@@ -72,6 +72,10 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   const lastHandledSpinIdRef = useRef<number>(0);
   const lastHandledExternalSpinIdRef = useRef<string>('');
   const activeSpinItemsRef = useRef<WheelItem[] | null>(null);
+  const activeSpinModeRef = useRef<'participant' | 'amount' | null>(null);
+  const isAnimatingRef = useRef<boolean>(false);
+  const externalSpinRef = useRef<SyncedSpinCommand | null>(externalSpin);
+  externalSpinRef.current = externalSpin;
   const [liveHoverLabel, setLiveHoverLabel] = useState<string>('');
   const [isSuspensePhase, setIsSuspensePhase] = useState<boolean>(false);
   const ledPhaseRef = useRef<number>(0);
@@ -108,6 +112,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     const outerRadius = displaySize * 0.44;
     const wheelRadius = outerRadius - 18;
     const currentItems = activeSpinItemsRef.current ?? itemsRef.current;
+    const activeMode = activeSpinModeRef.current ?? mode;
     const count = currentItems.length;
 
     // 1. Ambient glow under wheel
@@ -116,7 +121,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         ? 'rgba(16, 185, 129, 0.34)'
         : accentMode === 'max'
           ? 'rgba(244, 63, 94, 0.36)'
-          : mode === 'amount'
+          : activeMode === 'amount'
             ? 'rgba(245, 158, 11, 0.24)'
             : 'rgba(124, 58, 237, 0.32)';
     const bgGlow = ctx.createRadialGradient(cx, cy, wheelRadius * 0.5, cx, cy, outerRadius + 22);
@@ -166,7 +171,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
             ? '#34D399'
             : accentMode === 'max'
               ? '#FB7185'
-              : mode === 'amount'
+              : activeMode === 'amount'
                 ? '#FBBF24'
                 : '#C4B5FD';
         ctx.fillStyle = bulbColor;
@@ -195,7 +200,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       ctx.stroke();
     } else {
       const sliceAngle = (Math.PI * 2) / count;
-      const palette = mode === 'participant' ? PARTICIPANT_COLORS : AMOUNT_COLORS;
+      const palette = activeMode === 'participant' ? PARTICIPANT_COLORS : AMOUNT_COLORS;
 
       for (let i = 0; i < count; i += 1) {
         const item = currentItems[i];
@@ -203,7 +208,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         const endA = startA + sliceAngle;
 
         let baseColor = palette[i % palette.length];
-        if (mode === 'amount') {
+        if (activeMode === 'amount') {
           if (item.badge === 'min') {
             baseColor = '#059669'; // Emerald for Lucky Min
           } else if (item.badge === 'max') {
@@ -356,7 +361,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const tickIdle = (now: number) => {
-      if (!isSpinning) {
+      if (!isSpinning && !isAnimatingRef.current) {
         const dt = (now - lastTime) / 1000;
         lastTime = now;
         if (!prefersReduced) {
@@ -381,8 +386,22 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     return () => cancelAnimationFrame(rafId);
   }, [isSpinning, items, mode, accentMode]);
 
+  // Cancel any in-flight animation ONLY when component unmounts
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      isAnimatingRef.current = false;
+      activeSpinItemsRef.current = null;
+      activeSpinModeRef.current = null;
+    };
+  }, []);
+
   const runDeterministicSpin = (
     spinItems: WheelItem[],
+    spinMode: 'participant' | 'amount',
     startRotation: number,
     targetRotation: number,
     targetIndex: number,
@@ -394,7 +413,9 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       animFrameRef.current = null;
     }
 
+    isAnimatingRef.current = true;
     activeSpinItemsRef.current = spinItems;
+    activeSpinModeRef.current = spinMode;
     const startTime = performance.now() - Math.max(0, initialElapsedMs);
     const initialEval = evaluateSpinProgress(
       startRotation,
@@ -440,12 +461,15 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       if (!evalState.finished) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
+        animFrameRef.current = null;
+        isAnimatingRef.current = false;
         flapperKickRef.current = 0;
         setIsSuspensePhase(false);
         drawWheel(targetRotation, 0, ledPhaseRef.current);
         const landedIdx = getSliceIndexAtPointer(targetRotation, spinItems.length);
         const chosenItem = spinItems[landedIdx] ?? spinItems[targetIndex];
         activeSpinItemsRef.current = null;
+        activeSpinModeRef.current = null;
         setLiveHoverLabel(chosenItem.label);
         onSpinCompleteRef.current(landedIdx, chosenItem);
       }
@@ -494,36 +518,37 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     };
 
     onSpinDispatchedRef.current?.(command);
-    runDeterministicSpin(currentItems, startRotation, targetRotation, targetIndex, durationMs, 0);
-
-    return () => {
-      if (animFrameRef.current !== null) {
-        cancelAnimationFrame(animFrameRef.current);
-      }
-    };
+    runDeterministicSpin(
+      currentItems,
+      mode,
+      startRotation,
+      targetRotation,
+      targetIndex,
+      durationMs,
+      0
+    );
   }, [spinRequestId, mode]);
 
-  // Trigger viewer synced spin when externalSpin command arrives from host
+  // Trigger viewer synced spin ONLY when a genuinely new external spinId arrives
+  const externalSpinId = externalSpin?.spinId ?? '';
   useEffect(() => {
-    if (!externalSpin || externalSpin.spinId === lastHandledExternalSpinIdRef.current) return;
-    if (externalSpin.items.length === 0) return;
-    lastHandledExternalSpinIdRef.current = externalSpin.spinId;
+    const cmd = externalSpinRef.current;
+    if (!cmd || !externalSpinId || externalSpinId === lastHandledExternalSpinIdRef.current) {
+      return;
+    }
+    if (cmd.items.length === 0) return;
+    lastHandledExternalSpinIdRef.current = externalSpinId;
 
     runDeterministicSpin(
-      externalSpin.items,
-      externalSpin.startRotation,
-      externalSpin.targetRotation,
-      externalSpin.targetIndex,
-      externalSpin.durationMs,
-      externalSpin.initialElapsedMs ?? 0
+      cmd.items,
+      cmd.mode,
+      cmd.startRotation,
+      cmd.targetRotation,
+      cmd.targetIndex,
+      cmd.durationMs,
+      cmd.initialElapsedMs ?? 0
     );
-
-    return () => {
-      if (animFrameRef.current !== null) {
-        cancelAnimationFrame(animFrameRef.current);
-      }
-    };
-  }, [externalSpin]);
+  }, [externalSpinId]);
 
   const canClickHub = !readOnly && !disabled && !isSpinning && items.length > 0;
 
