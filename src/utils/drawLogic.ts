@@ -119,6 +119,36 @@ export function computeTargetRotation(
 }
 
 /**
+ * Deterministic 3.15-order suspense easing evaluation for synced wheel spins.
+ * Guarantees host & viewers at any elapsed offset land on the exact same final angle & slice.
+ */
+export function evaluateSpinProgress(
+  startRotation: number,
+  targetRotation: number,
+  durationMs: number,
+  elapsedMs: number
+): {
+  progress: number;
+  rotation: number;
+  speedRatio: number;
+  isSuspense: boolean;
+  finished: boolean;
+} {
+  const safeDuration = Math.max(1, durationMs);
+  const t = Math.max(0, Math.min(1, elapsedMs / safeDuration));
+  const easeOut = 1 - Math.pow(1 - t, 3.15);
+  const rotation = startRotation + (targetRotation - startRotation) * easeOut;
+  const speedRatio = Math.pow(1 - t, 2.15);
+  return {
+    progress: t,
+    rotation,
+    speedRatio,
+    isSuspense: t >= 0.62 && t < 1,
+    finished: t >= 1,
+  };
+}
+
+/**
  * Format amount with configurable currency unit.
  * Symbol prefixes (NT$, $, US$, ￥, ¥) appear before the number;
  * word/Chinese units (新台幣, 天幣, 藍鑽, 金幣, etc.) appear cleanly after the number.

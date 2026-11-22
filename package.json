@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "canvas-confetti": "^1.9.3",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
@@ -29,4 +30,3 @@
     "vitest": "^3.1.2"
   }
 }
-

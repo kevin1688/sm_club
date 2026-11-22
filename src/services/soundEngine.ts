@@ -11,6 +11,13 @@ class RouletteSoundEngine {
     this.volume = Math.max(0, Math.min(1, volume));
   }
 
+  /**
+   * Explicitly unlock Web Audio on user interaction (e.g. viewer clicking "Enter Live Room").
+   */
+  public unlock(): void {
+    this.ensureContext();
+  }
+
   private ensureContext(): AudioContext | null {
     if (!this.enabled || this.volume <= 0) return null;
     if (typeof window === 'undefined') return null;

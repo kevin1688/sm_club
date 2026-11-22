@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyAmountTier,
   computeTargetRotation,
+  evaluateSpinProgress,
   formatAmount,
   getSliceIndexAtPointer,
   mergeDrawRecords,
@@ -53,6 +54,29 @@ describe('drawLogic', () => {
         expect(getSliceIndexAtPointer(finalRot, itemCount)).toBe(target);
       }
     }
+  });
+
+  it('evaluates deterministic synced spin progress identically regardless of late-join offset', () => {
+    const startRot = 0.75;
+    const itemCount = 8;
+    const targetIdx = 5;
+    const durationMs = 12000;
+    const targetRot = computeTargetRotation(startRot, targetIdx, itemCount, 15, 0.42);
+
+    const early = evaluateSpinProgress(startRot, targetRot, durationMs, 0);
+    const mid = evaluateSpinProgress(startRot, targetRot, durationMs, 5000);
+    const suspense = evaluateSpinProgress(startRot, targetRot, durationMs, 9500);
+    const end = evaluateSpinProgress(startRot, targetRot, durationMs, durationMs);
+    const lateEnd = evaluateSpinProgress(startRot, targetRot, durationMs, durationMs + 1500);
+
+    expect(early.rotation).toBeCloseTo(startRot, 6);
+    expect(mid.rotation).toBeGreaterThan(startRot);
+    expect(mid.isSuspense).toBe(false);
+    expect(suspense.isSuspense).toBe(true);
+    expect(end.finished).toBe(true);
+    expect(end.rotation).toBeCloseTo(targetRot, 6);
+    expect(lateEnd.rotation).toBeCloseTo(targetRot, 6);
+    expect(getSliceIndexAtPointer(end.rotation, itemCount)).toBe(targetIdx);
   });
 
   it('removes only one instance at the specified index', () => {

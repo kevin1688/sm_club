@@ -131,6 +131,29 @@
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+@keyframes danmaku-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(calc(-100% - var(--danmaku-stage-width, 760px) - 80px), 0, 0);
+  }
+}
+
+.animate-danmaku-scroll {
+  animation: danmaku-scroll var(--danmaku-duration, 8s) linear forwards;
+  will-change: transform;
+}
+
+.danmaku-stroke {
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.95),
+    1px 1px 0 rgba(0, 0, 0, 0.9),
+    -1px -1px 0 rgba(0, 0, 0, 0.9),
+    1px -1px 0 rgba(0, 0, 0, 0.9),
+    -1px 1px 0 rgba(0, 0, 0, 0.9);
+}
+
 .animate-screen-shake {
   animation: screen-shake 0.72s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
@@ -183,7 +206,8 @@
   .animate-float-fall,
   .animate-pulse-halo,
   .animate-stamp-slam,
-  .animate-reveal-pop {
+  .animate-reveal-pop,
+  .animate-danmaku-scroll {
     animation: none !important;
   }
 }

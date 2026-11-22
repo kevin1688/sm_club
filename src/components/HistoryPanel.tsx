@@ -22,6 +22,7 @@ interface HistoryPanelProps {
   defaultCurrencyUnit: string;
   githubConfig: GitHubConfig;
   syncStatus: SyncStatus;
+  readOnlyViewer?: boolean;
   onSyncAllToGitHub: () => void;
   onPullFromGitHub: () => void;
   onClearLocalRecords: () => void;
@@ -33,6 +34,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
   defaultCurrencyUnit,
   githubConfig,
   syncStatus,
+  readOnlyViewer = false,
   onSyncAllToGitHub,
   onPullFromGitHub,
   onClearLocalRecords,
@@ -138,58 +140,60 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
         </div>
       </div>
 
-      {/* GitHub Cloud Sync Action Bar */}
-      <div className="rounded-xl border border-[#4C1D95]/70 bg-[#17142E] p-3 space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-bold text-white">
-            <Github className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
-            <span>
-              {canWriteGitHub
-                ? `已連接 ${githubConfig.owner}/${githubConfig.repo}`
-                : '本機模擬儲存模式'}
-            </span>
+      {/* GitHub Cloud Sync Action Bar (Hidden for Live Room Viewers) */}
+      {!readOnlyViewer && (
+        <div className="rounded-xl border border-[#4C1D95]/70 bg-[#17142E] p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-white">
+              <Github className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
+              <span>
+                {canWriteGitHub
+                  ? `已連接 ${githubConfig.owner}/${githubConfig.repo}`
+                  : '本機模擬儲存模式'}
+              </span>
+            </div>
+            {unsyncedCount > 0 && (
+              <span className="rounded-full bg-[#F59E0B]/20 px-2 py-0.5 text-[11px] font-bold text-[#FDE68A] tabular-nums">
+                {unsyncedCount} 筆待上傳
+              </span>
+            )}
           </div>
-          {unsyncedCount > 0 && (
-            <span className="rounded-full bg-[#F59E0B]/20 px-2 py-0.5 text-[11px] font-bold text-[#FDE68A] tabular-nums">
-              {unsyncedCount} 筆待上傳
-            </span>
-          )}
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={syncStatus === 'syncing'}
-            onClick={canWriteGitHub ? onSyncAllToGitHub : onOpenGitHubSettings}
-            className="inline-flex min-h-[40px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#7C3AED] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#8B5CF6] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
-          >
-            <CloudUpload className="h-4 w-4" aria-hidden="true" />
-            <span>
-              {syncStatus === 'syncing'
-                ? '同步中...'
-                : canWriteGitHub
-                  ? '同步上傳至 GitHub'
-                  : '設定並上傳至 GitHub'}
-            </span>
-          </button>
-
-          {canReadGitHub && (
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={syncStatus === 'syncing'}
-              onClick={onPullFromGitHub}
-              aria-label="從 GitHub 拉取最新紀錄"
-              className="inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-1 rounded-lg border border-[#4C1D95] bg-[#0F0F23] px-3 py-2 text-xs font-semibold text-[#E2E8F0] transition-colors hover:bg-[#252242] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+              onClick={canWriteGitHub ? onSyncAllToGitHub : onOpenGitHubSettings}
+              className="inline-flex min-h-[40px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[#7C3AED] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#8B5CF6] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}
-                aria-hidden="true"
-              />
-              <span>拉取</span>
+              <CloudUpload className="h-4 w-4" aria-hidden="true" />
+              <span>
+                {syncStatus === 'syncing'
+                  ? '同步中...'
+                  : canWriteGitHub
+                    ? '同步上傳至 GitHub'
+                    : '設定並上傳至 GitHub'}
+              </span>
             </button>
-          )}
+
+            {canReadGitHub && (
+              <button
+                type="button"
+                disabled={syncStatus === 'syncing'}
+                onClick={onPullFromGitHub}
+                aria-label="從 GitHub 拉取最新紀錄"
+                className="inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-1 rounded-lg border border-[#4C1D95] bg-[#0F0F23] px-3 py-2 text-xs font-semibold text-[#E2E8F0] transition-colors hover:bg-[#252242] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}
+                  aria-hidden="true"
+                />
+                <span>拉取</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Search + Filter + Export */}
       <div className="space-y-2.5">
@@ -247,7 +251,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
               <span>CSV</span>
             </button>
 
-            {records.length > 0 &&
+            {!readOnlyViewer && records.length > 0 &&
               (!confirmClear ? (
                 <button
                   type="button"

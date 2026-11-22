@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Sparkles, Play, RotateCw } from 'lucide-react';
+import { Sparkles, Play, RotateCw, Tv } from 'lucide-react';
 import type { WheelItem } from '../types';
-import { computeTargetRotation, getSliceIndexAtPointer } from '../utils/drawLogic';
+import type { SyncedSpinCommand } from '../types/realtime';
+import {
+  computeTargetRotation,
+  evaluateSpinProgress,
+  getSliceIndexAtPointer,
+} from '../utils/drawLogic';
 import { soundEngine } from '../services/soundEngine';
 
 interface RouletteWheelProps {
@@ -9,10 +14,13 @@ interface RouletteWheelProps {
   mode: 'participant' | 'amount';
   isSpinning: boolean;
   disabled: boolean;
+  readOnly?: boolean;
   actionLabel: string;
   accentMode?: 'default' | 'min' | 'max';
   spinRequestId: number;
+  externalSpin?: SyncedSpinCommand | null;
   onSpinStart: () => void;
+  onSpinDispatched?: (command: SyncedSpinCommand) => void;
   onSpinComplete: (selectedIndex: number, item: WheelItem) => void;
   onTriggerSpin: () => void;
 }
@@ -47,10 +55,13 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   mode,
   isSpinning,
   disabled,
+  readOnly = false,
   actionLabel,
   accentMode = 'default',
   spinRequestId,
+  externalSpin = null,
   onSpinStart,
+  onSpinDispatched,
   onSpinComplete,
   onTriggerSpin,
 }) => {
@@ -59,6 +70,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   const flapperKickRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
   const lastHandledSpinIdRef = useRef<number>(0);
+  const lastHandledExternalSpinIdRef = useRef<string>('');
+  const activeSpinItemsRef = useRef<WheelItem[] | null>(null);
   const [liveHoverLabel, setLiveHoverLabel] = useState<string>('');
   const [isSuspensePhase, setIsSuspensePhase] = useState<boolean>(false);
   const ledPhaseRef = useRef<number>(0);
@@ -68,6 +81,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   itemsRef.current = items;
   const onSpinStartRef = useRef(onSpinStart);
   onSpinStartRef.current = onSpinStart;
+  const onSpinDispatchedRef = useRef(onSpinDispatched);
+  onSpinDispatchedRef.current = onSpinDispatched;
   const onSpinCompleteRef = useRef(onSpinComplete);
   onSpinCompleteRef.current = onSpinComplete;
 
@@ -92,7 +107,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     const cy = displaySize / 2 + 6;
     const outerRadius = displaySize * 0.44;
     const wheelRadius = outerRadius - 18;
-    const currentItems = itemsRef.current;
+    const currentItems = activeSpinItemsRef.current ?? itemsRef.current;
     const count = currentItems.length;
 
     // 1. Ambient glow under wheel
@@ -366,7 +381,80 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     return () => cancelAnimationFrame(rafId);
   }, [isSpinning, items, mode, accentMode]);
 
-  // Trigger spin when spinRequestId increments
+  const runDeterministicSpin = (
+    spinItems: WheelItem[],
+    startRotation: number,
+    targetRotation: number,
+    targetIndex: number,
+    durationMs: number,
+    initialElapsedMs: number
+  ) => {
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    activeSpinItemsRef.current = spinItems;
+    const startTime = performance.now() - Math.max(0, initialElapsedMs);
+    const initialEval = evaluateSpinProgress(
+      startRotation,
+      targetRotation,
+      durationMs,
+      Math.max(0, initialElapsedMs)
+    );
+    rotationRef.current = initialEval.rotation;
+    let prevSliceIdx = getSliceIndexAtPointer(initialEval.rotation, spinItems.length);
+    let suspenseEntered = initialEval.isSuspense;
+
+    setIsSuspensePhase(initialEval.isSuspense);
+    onSpinStartRef.current();
+    if (initialElapsedMs < 250) {
+      soundEngine.playSpinStart();
+    }
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const evalState = evaluateSpinProgress(startRotation, targetRotation, durationMs, elapsed);
+
+      if (!suspenseEntered && evalState.isSuspense) {
+        suspenseEntered = true;
+        setIsSuspensePhase(true);
+      }
+
+      rotationRef.current = evalState.rotation;
+      ledPhaseRef.current += 0.18 + evalState.speedRatio * 1.5;
+
+      const sliceIdx = getSliceIndexAtPointer(evalState.rotation, spinItems.length);
+      if (sliceIdx !== prevSliceIdx) {
+        prevSliceIdx = sliceIdx;
+        flapperKickRef.current =
+          evalState.speedRatio < 0.18 ? -0.44 : -0.3 - evalState.speedRatio * 0.22;
+        soundEngine.playPegTick(evalState.speedRatio);
+        setLiveHoverLabel(spinItems[sliceIdx]?.label ?? '');
+      } else {
+        flapperKickRef.current *= evalState.speedRatio < 0.18 ? 0.89 : 0.82;
+      }
+
+      drawWheel(evalState.rotation, flapperKickRef.current, ledPhaseRef.current);
+
+      if (!evalState.finished) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        flapperKickRef.current = 0;
+        setIsSuspensePhase(false);
+        drawWheel(targetRotation, 0, ledPhaseRef.current);
+        const landedIdx = getSliceIndexAtPointer(targetRotation, spinItems.length);
+        const chosenItem = spinItems[landedIdx] ?? spinItems[targetIndex];
+        activeSpinItemsRef.current = null;
+        setLiveHoverLabel(chosenItem.label);
+        onSpinCompleteRef.current(landedIdx, chosenItem);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+  };
+
+  // Trigger local/host spin when spinRequestId increments
   useEffect(() => {
     if (spinRequestId === 0 || spinRequestId === lastHandledSpinIdRef.current) return;
     lastHandledSpinIdRef.current = spinRequestId;
@@ -381,9 +469,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
     const targetIndex = Math.floor(Math.random() * currentItems.length);
     const startRotation = rotationRef.current;
-    // Extended revolutions + >2x spin duration for dramatic slow-crawl tension
     const extraSpins = prefersReduced ? 1 : mode === 'participant' ? 13 : 15;
-    // Allow slightly wider landing range inside the target slice for near-peg edge suspense
     const jitter = 0.16 + Math.random() * 0.68;
     const targetRotation = computeTargetRotation(
       startRotation,
@@ -392,59 +478,22 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       extraSpins,
       jitter
     );
-
     const durationMs = prefersReduced ? 600 : mode === 'participant' ? 10500 : 12000;
-    const startTime = performance.now();
-    let prevSliceIdx = getSliceIndexAtPointer(startRotation, currentItems.length);
-    let suspenseEntered = false;
 
-    setIsSuspensePhase(false);
-    onSpinStartRef.current();
-    soundEngine.playSpinStart();
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const t = Math.min(1, elapsed / durationMs);
-      // Calibrated 3.15-order physical deceleration: energetic launch -> long, nail-biting slow stop
-      const easeOut = 1 - Math.pow(1 - t, 3.15);
-      const currentRot = startRotation + (targetRotation - startRotation) * easeOut;
-      const instantSpeedRatio = Math.pow(1 - t, 2.15);
-
-      if (!suspenseEntered && t >= 0.62 && t < 1) {
-        suspenseEntered = true;
-        setIsSuspensePhase(true);
-      }
-
-      rotationRef.current = currentRot;
-      ledPhaseRef.current += 0.18 + instantSpeedRatio * 1.5;
-
-      const sliceIdx = getSliceIndexAtPointer(currentRot, currentItems.length);
-      if (sliceIdx !== prevSliceIdx) {
-        prevSliceIdx = sliceIdx;
-        // Heavier flapper kick during the slow final ticks for tactile suspense
-        flapperKickRef.current = instantSpeedRatio < 0.18 ? -0.44 : -0.3 - instantSpeedRatio * 0.22;
-        soundEngine.playPegTick(instantSpeedRatio);
-        setLiveHoverLabel(currentItems[sliceIdx]?.label ?? '');
-      } else {
-        flapperKickRef.current *= instantSpeedRatio < 0.18 ? 0.89 : 0.82;
-      }
-
-      drawWheel(currentRot, flapperKickRef.current, ledPhaseRef.current);
-
-      if (t < 1) {
-        animFrameRef.current = requestAnimationFrame(animate);
-      } else {
-        flapperKickRef.current = 0;
-        setIsSuspensePhase(false);
-        drawWheel(targetRotation, 0, ledPhaseRef.current);
-        const landedIdx = getSliceIndexAtPointer(targetRotation, currentItems.length);
-        const chosenItem = currentItems[landedIdx] ?? currentItems[targetIndex];
-        setLiveHoverLabel(chosenItem.label);
-        onSpinCompleteRef.current(landedIdx, chosenItem);
-      }
+    const command: SyncedSpinCommand = {
+      spinId: `spin_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      mode,
+      items: currentItems,
+      startRotation,
+      targetRotation,
+      targetIndex,
+      durationMs,
+      startedAt: Date.now(),
+      initialElapsedMs: 0,
     };
 
-    animFrameRef.current = requestAnimationFrame(animate);
+    onSpinDispatchedRef.current?.(command);
+    runDeterministicSpin(currentItems, startRotation, targetRotation, targetIndex, durationMs, 0);
 
     return () => {
       if (animFrameRef.current !== null) {
@@ -453,7 +502,29 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     };
   }, [spinRequestId, mode]);
 
-  const canClickHub = !disabled && !isSpinning && items.length > 0;
+  // Trigger viewer synced spin when externalSpin command arrives from host
+  useEffect(() => {
+    if (!externalSpin || externalSpin.spinId === lastHandledExternalSpinIdRef.current) return;
+    if (externalSpin.items.length === 0) return;
+    lastHandledExternalSpinIdRef.current = externalSpin.spinId;
+
+    runDeterministicSpin(
+      externalSpin.items,
+      externalSpin.startRotation,
+      externalSpin.targetRotation,
+      externalSpin.targetIndex,
+      externalSpin.durationMs,
+      externalSpin.initialElapsedMs ?? 0
+    );
+
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [externalSpin]);
+
+  const canClickHub = !readOnly && !disabled && !isSpinning && items.length > 0;
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full select-none">
@@ -502,11 +573,19 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         >
           {isSpinning ? (
             <RotateCw className="h-6 w-6 animate-spin" aria-hidden="true" />
+          ) : readOnly ? (
+            <Tv className="h-5 w-5 mb-0.5 text-[#A78BFA]" aria-hidden="true" />
           ) : (
             <Play className="h-5 w-5 fill-current mb-0.5" aria-hidden="true" />
           )}
           <span className="leading-tight font-bold">
-            {isSpinning ? '旋轉中' : mode === 'participant' ? '抽人物' : '抽金額'}
+            {isSpinning
+              ? '旋轉中'
+              : readOnly
+                ? '同步觀戰'
+                : mode === 'participant'
+                  ? '抽人物'
+                  : '抽金額'}
           </span>
         </button>
       </div>

@@ -24,6 +24,7 @@ interface SpecialEffectsProps {
   record: DrawRecord | null;
   syncStatus: SyncStatus;
   syncError: string | null;
+  readOnlyViewer?: boolean;
   onNextRound: () => void;
   onClose: () => void;
 }
@@ -39,6 +40,7 @@ export const SpecialEffects: React.FC<SpecialEffectsProps> = ({
   record,
   syncStatus,
   syncError,
+  readOnlyViewer = false,
   onNextRound,
   onClose,
 }) => {
@@ -302,56 +304,69 @@ export const SpecialEffects: React.FC<SpecialEffectsProps> = ({
 
         {/* Sync Status Strip */}
         <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-black/25 px-3 py-2 text-xs text-[#CBD5E1]">
-          {syncStatus === 'syncing' && (
+          {readOnlyViewer ? (
             <>
-              <CloudUpload className="h-4 w-4 animate-bounce text-[#A78BFA]" aria-hidden="true" />
-              <span>正在自動同步至 GitHub 歷史紀錄...</span>
+              <Sparkles className="h-4 w-4 text-[#A78BFA]" aria-hidden="true" />
+              <span>已同步揭曉結果（由主持人負責保存歷史紀錄）</span>
             </>
-          )}
-          {syncStatus === 'synced' && (
+          ) : (
             <>
-              <Cloud className="h-4 w-4 text-[#34D399]" aria-hidden="true" />
-              <span>已成功記錄並上傳至 GitHub！</span>
-            </>
-          )}
-          {syncStatus === 'local-only' && (
-            <>
-              <HardDrive className="h-4 w-4 text-[#FBBF24]" aria-hidden="true" />
-              <span>已儲存於本機模擬紀錄（可隨時一鍵上傳至 GitHub）</span>
-            </>
-          )}
-          {syncStatus === 'error' && (
-            <>
-              <AlertCircle className="h-4 w-4 text-[#FB7185]" aria-hidden="true" />
-              <span className="truncate">
-                已先存本機，GitHub 同步失敗：{syncError || '請檢查設定'}
-              </span>
+              {syncStatus === 'syncing' && (
+                <>
+                  <CloudUpload className="h-4 w-4 animate-bounce text-[#A78BFA]" aria-hidden="true" />
+                  <span>正在自動同步至 GitHub 歷史紀錄...</span>
+                </>
+              )}
+              {syncStatus === 'synced' && (
+                <>
+                  <Cloud className="h-4 w-4 text-[#34D399]" aria-hidden="true" />
+                  <span>已成功記錄並上傳至 GitHub！</span>
+                </>
+              )}
+              {syncStatus === 'local-only' && (
+                <>
+                  <HardDrive className="h-4 w-4 text-[#FBBF24]" aria-hidden="true" />
+                  <span>已儲存於本機模擬紀錄（可隨時一鍵上傳至 GitHub）</span>
+                </>
+              )}
+              {syncStatus === 'error' && (
+                <>
+                  <AlertCircle className="h-4 w-4 text-[#FB7185]" aria-hidden="true" />
+                  <span className="truncate">
+                    已先存本機，GitHub 同步失敗：{syncError || '請檢查設定'}
+                  </span>
+                </>
+              )}
             </>
           )}
         </div>
 
         {/* Action Buttons */}
         <div className="mt-6 flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={onNextRound}
-            className={`flex min-h-[48px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] ${
-              isMin
-                ? 'bg-[#10B981] text-[#052E16] hover:bg-[#34D399]'
-                : isMax
-                  ? 'bg-[#F43F5E] text-white hover:bg-[#FB7185]'
-                  : 'bg-[#7C3AED] text-white hover:bg-[#8B5CF6]'
-            }`}
-          >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            <span>進行下一輪抽獎</span>
-          </button>
+          {!readOnlyViewer && (
+            <button
+              type="button"
+              onClick={onNextRound}
+              className={`flex min-h-[48px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] ${
+                isMin
+                  ? 'bg-[#10B981] text-[#052E16] hover:bg-[#34D399]'
+                  : isMax
+                    ? 'bg-[#F43F5E] text-white hover:bg-[#FB7185]'
+                    : 'bg-[#7C3AED] text-white hover:bg-[#8B5CF6]'
+              }`}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              <span>進行下一輪抽獎</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="flex min-h-[48px] cursor-pointer items-center justify-center rounded-xl border border-[#4C1D95] bg-[#1E1C35] px-5 py-3 text-sm font-semibold text-[#E2E8F0] transition-colors duration-200 hover:bg-[#2A264A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+            className={`flex min-h-[48px] cursor-pointer items-center justify-center rounded-xl border border-[#4C1D95] bg-[#1E1C35] px-5 py-3 text-sm font-semibold text-[#E2E8F0] transition-colors duration-200 hover:bg-[#2A264A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
+              readOnlyViewer ? 'flex-1' : ''
+            }`}
           >
-            留在此畫面
+            {readOnlyViewer ? '關閉視窗（等待主持人下一輪）' : '留在此畫面'}
           </button>
         </div>
       </div>
