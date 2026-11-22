@@ -23,7 +23,6 @@ import {
   Tv,
 } from 'lucide-react';
 import {
-  CURRENCY_UNITS,
   type CurrencyUnit,
   type DrawRecord,
   type DrawSettings,
@@ -148,7 +147,7 @@ export function App() {
     const savedV2 = readStorage<Partial<DrawSettings> | null>(STORAGE_KEYS.settings, null);
     if (savedV2) {
       const validUnit: CurrencyUnit =
-        savedV2.currencyUnit && (CURRENCY_UNITS as readonly string[]).includes(savedV2.currencyUnit)
+        typeof savedV2.currencyUnit === 'string' && savedV2.currencyUnit.trim().length > 0
           ? savedV2.currencyUnit
           : DEFAULT_SETTINGS.currencyUnit;
       return {

@@ -30,11 +30,13 @@ describe('drawLogic', () => {
     ]);
   });
 
-  it('formats currency units cleanly with 天幣 as default', () => {
+  it('formats currency units cleanly with 天幣 as default and supports custom units', () => {
     expect(formatAmount(1800)).toBe('1,800 天幣');
     expect(formatAmount(1800, '新台幣')).toBe('1,800 新台幣');
     expect(formatAmount(1800, '天幣')).toBe('1,800 天幣');
     expect(formatAmount(1800, '贊助幣')).toBe('1,800 贊助幣');
+    expect(formatAmount(500, '萬天幣')).toBe('500 萬天幣');
+    expect(formatAmount(300, '藍鑽')).toBe('300 藍鑽');
   });
 
   it('classifies min, max, and normal amounts accurately', () => {

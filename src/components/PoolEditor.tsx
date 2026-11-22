@@ -213,16 +213,23 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
           )}
         </div>
 
-        {/* Currency Unit Selector (Only: 新台幣 / 天幣 / 贊助幣) */}
-        <div className="space-y-2 rounded-xl border border-white/10 bg-[#0F0F23]/65 p-3">
-          <div className="text-xs font-bold text-[#E2E8F0]">幣別選擇</div>
+        {/* Currency Unit Selector (3 quick presets: 新台幣 / 天幣 / 贊助幣 + custom unit input) */}
+        <div className="space-y-2.5 rounded-xl border border-white/10 bg-[#0F0F23]/65 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="custom-currency-unit-input" className="text-xs font-bold text-[#E2E8F0]">
+              幣別／單位
+            </label>
+            <span className="text-[11px] text-[#94A3B8]">
+              目前：<strong className="text-[#FDE68A]">{currencyUnit.trim() || '天幣'}</strong>
+            </span>
+          </div>
           <div
             className="grid grid-cols-3 gap-2"
             role="radiogroup"
-            aria-label="選擇價錢幣別"
+            aria-label="快捷幣別選擇"
           >
             {CURRENCY_UNITS.map((unit) => {
-              const active = currencyUnit === unit;
+              const active = currencyUnit.trim() === unit;
               return (
                 <button
                   key={unit}
@@ -242,6 +249,16 @@ export const PoolEditor: React.FC<PoolEditorProps> = ({
               );
             })}
           </div>
+          <input
+            id="custom-currency-unit-input"
+            type="text"
+            maxLength={16}
+            disabled={disabled}
+            value={settings.currencyUnit}
+            onChange={(e) => onUpdateSettings({ currencyUnit: e.target.value })}
+            placeholder="自訂單位，例如：萬天幣、藍鑽、鑽石、元..."
+            className="min-h-[42px] w-full rounded-lg border border-[#4C1D95]/65 bg-[#0F0F23] px-3 text-xs font-semibold text-white placeholder-[#64748B] transition-colors focus:border-[#FBBF24] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/35 disabled:opacity-50"
+          />
         </div>
 
         {/* Min / Max Live Preview Strip */}
