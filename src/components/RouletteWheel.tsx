@@ -469,7 +469,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
     const targetIndex = Math.floor(Math.random() * currentItems.length);
     const startRotation = rotationRef.current;
-    const extraSpins = prefersReduced ? 1 : mode === 'participant' ? 13 : 15;
+    // High-energy fast launch that dramatically brakes down to a slow suspenseful crawl
+    const extraSpins = prefersReduced ? 1 : mode === 'participant' ? 18 : 20;
     const jitter = 0.16 + Math.random() * 0.68;
     const targetRotation = computeTargetRotation(
       startRotation,
@@ -478,7 +479,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       extraSpins,
       jitter
     );
-    const durationMs = prefersReduced ? 600 : mode === 'participant' ? 10500 : 12000;
+    const durationMs = prefersReduced ? 600 : mode === 'participant' ? 11000 : 12500;
 
     const command: SyncedSpinCommand = {
       spinId: `spin_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,

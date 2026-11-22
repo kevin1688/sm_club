@@ -225,3 +225,4 @@ export const RoomControlBar: React.FC<RoomControlBarProps> = ({
     </div>
   );
 };
+

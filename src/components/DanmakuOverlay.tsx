@@ -104,14 +104,14 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ messages, visibl
 
   if (!visible) return null;
 
-  // Accessible calm feed fallback for users preferring reduced motion
+  // Accessible calm feed fallback for users preferring reduced motion (pinned to top to never cover input)
   if (reducedMotion) {
     const latestFew = bullets.slice(-4);
     if (latestFew.length === 0) return null;
     return (
       <div
         aria-live="polite"
-        className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex flex-col gap-1.5"
+        className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-1.5"
       >
         {latestFew.map((b) => (
           <div
@@ -130,11 +130,12 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ messages, visibl
     <div
       ref={containerRef}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-2xl select-none"
+      className="pointer-events-none absolute inset-x-0 top-0 bottom-8 z-20 overflow-hidden rounded-2xl select-none"
       style={{ '--danmaku-stage-width': `${stageWidth}px` } as React.CSSProperties}
     >
       {bullets.map((b) => {
-        const topPct = 6 + b.track * 11.5;
+        // Keep all 7 tracks cleanly in the upper-to-mid wheel zone (4% ~ 58%) so lower controls & input are never obscured
+        const topPct = 4 + b.track * 9;
         const isSysMin = b.kind === 'system-min';
         const isSysMax = b.kind === 'system-max';
         const isSysInfo = b.kind === 'system-info';
@@ -181,3 +182,4 @@ export const DanmakuOverlay: React.FC<DanmakuOverlayProps> = ({ messages, visibl
     </div>
   );
 };
+

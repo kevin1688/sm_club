@@ -56,7 +56,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
 
     const totalsByUnit = new Map<string, number>();
     for (const r of records) {
-      const unit = r.currencyUnit?.trim() || '新台幣';
+      const unit = r.currencyUnit?.trim() || '天幣';
       totalsByUnit.set(unit, (totalsByUnit.get(unit) ?? 0) + r.amount);
     }
 

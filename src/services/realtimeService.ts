@@ -291,3 +291,4 @@ class SupabaseRealtimeRoomService {
 }
 
 export const realtimeRoomService = new SupabaseRealtimeRoomService();
+

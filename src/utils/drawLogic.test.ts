@@ -30,7 +30,8 @@ describe('drawLogic', () => {
     ]);
   });
 
-  it('formats currency units cleanly for 新台幣, 天幣, and 贊助幣', () => {
+  it('formats currency units cleanly with 天幣 as default', () => {
+    expect(formatAmount(1800)).toBe('1,800 天幣');
     expect(formatAmount(1800, '新台幣')).toBe('1,800 新台幣');
     expect(formatAmount(1800, '天幣')).toBe('1,800 天幣');
     expect(formatAmount(1800, '贊助幣')).toBe('1,800 贊助幣');

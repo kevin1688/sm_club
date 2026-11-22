@@ -119,7 +119,8 @@ export function computeTargetRotation(
 }
 
 /**
- * Deterministic 3.15-order suspense easing evaluation for synced wheel spins.
+ * Deterministic 3.85-order fast-to-slow suspense easing for synced wheel spins.
+ * Launches fast and smoothly brakes down into a nail-biting slow stop.
  * Guarantees host & viewers at any elapsed offset land on the exact same final angle & slice.
  */
 export function evaluateSpinProgress(
@@ -136,14 +137,14 @@ export function evaluateSpinProgress(
 } {
   const safeDuration = Math.max(1, durationMs);
   const t = Math.max(0, Math.min(1, elapsedMs / safeDuration));
-  const easeOut = 1 - Math.pow(1 - t, 3.15);
+  const easeOut = 1 - Math.pow(1 - t, 3.85);
   const rotation = startRotation + (targetRotation - startRotation) * easeOut;
-  const speedRatio = Math.pow(1 - t, 2.15);
+  const speedRatio = Math.pow(1 - t, 2.85);
   return {
     progress: t,
     rotation,
     speedRatio,
-    isSuspense: t >= 0.62 && t < 1,
+    isSuspense: t >= 0.58 && t < 1,
     finished: t >= 1,
   };
 }
@@ -151,10 +152,10 @@ export function evaluateSpinProgress(
 /**
  * Format amount with configurable currency unit.
  * Symbol prefixes (NT$, $, US$, ￥, ¥) appear before the number;
- * word/Chinese units (新台幣, 天幣, 藍鑽, 金幣, etc.) appear cleanly after the number.
+ * word/Chinese units (天幣, 新台幣, 贊助幣, etc.) appear cleanly after the number.
  */
-export function formatAmount(amount: number, unit = '新台幣'): string {
-  const normalizedUnit = unit.trim() || '新台幣';
+export function formatAmount(amount: number, unit = '天幣'): string {
+  const normalizedUnit = unit.trim() || '天幣';
   const formattedNumber = amount.toLocaleString('zh-TW', {
     maximumFractionDigits: 2,
   });
@@ -220,7 +221,7 @@ export function recordsToCsv(records: DrawRecord[]): string {
     r.itemName || '未指定項目',
     r.winnerId,
     r.amount,
-    r.currencyUnit || '新台幣',
+    r.currencyUnit || '天幣',
     tierLabels[r.tier],
     r.poolMin,
     r.poolMax,

@@ -74,7 +74,7 @@ const STORAGE_KEYS = {
   itemName: 'lpr_item_name_v1',
   participants: 'lpr_participants_v1',
   amounts: 'lpr_amounts_v1',
-  settings: 'lpr_settings_v1',
+  settings: 'lpr_settings_v2',
   records: 'lpr_records_v1',
   github: 'lpr_github_config_v1',
   nickname: 'lpr_nickname_v1',
@@ -96,7 +96,7 @@ const SAMPLE_PARTICIPANTS = [
 const SAMPLE_AMOUNTS = [100, 280, 450, 600, 750, 920, 1200, 1800];
 
 const DEFAULT_SETTINGS: DrawSettings = {
-  currencyUnit: '新台幣',
+  currencyUnit: '天幣',
   removeWinnerAfterDraw: true,
   removeAmountAfterDraw: true,
   soundEnabled: true,
@@ -145,15 +145,29 @@ export function App() {
     readStorage(STORAGE_KEYS.amounts, SAMPLE_AMOUNTS)
   );
   const [settings, setSettings] = useState<DrawSettings>(() => {
-    const saved = readStorage<Partial<DrawSettings>>(STORAGE_KEYS.settings, {});
-    const validUnit: CurrencyUnit =
-      saved.currencyUnit && (CURRENCY_UNITS as readonly string[]).includes(saved.currencyUnit)
-        ? saved.currencyUnit
-        : DEFAULT_SETTINGS.currencyUnit;
+    const savedV2 = readStorage<Partial<DrawSettings> | null>(STORAGE_KEYS.settings, null);
+    if (savedV2) {
+      const validUnit: CurrencyUnit =
+        savedV2.currencyUnit && (CURRENCY_UNITS as readonly string[]).includes(savedV2.currencyUnit)
+          ? savedV2.currencyUnit
+          : DEFAULT_SETTINGS.currencyUnit;
+      return {
+        ...DEFAULT_SETTINGS,
+        ...savedV2,
+        currencyUnit: validUnit,
+      };
+    }
+    // Migrate non-currency preferences from v1 while adopting new default '天幣'
+    const legacyV1 = readStorage<Partial<DrawSettings>>('lpr_settings_v1', {});
     return {
       ...DEFAULT_SETTINGS,
-      ...saved,
-      currencyUnit: validUnit,
+      removeWinnerAfterDraw:
+        legacyV1.removeWinnerAfterDraw ?? DEFAULT_SETTINGS.removeWinnerAfterDraw,
+      removeAmountAfterDraw:
+        legacyV1.removeAmountAfterDraw ?? DEFAULT_SETTINGS.removeAmountAfterDraw,
+      soundEnabled: legacyV1.soundEnabled ?? DEFAULT_SETTINGS.soundEnabled,
+      volume: legacyV1.volume ?? DEFAULT_SETTINGS.volume,
+      currencyUnit: '天幣',
     };
   });
   const [records, setRecords] = useState<DrawRecord[]>(() =>
@@ -378,7 +392,7 @@ export function App() {
   const displayParticipants = isLiveViewer ? (viewerSnapshot?.participants ?? []) : participants;
   const displayAmounts = isLiveViewer ? (viewerSnapshot?.amounts ?? []) : amounts;
   const displayCurrencyUnit: CurrencyUnit = isLiveViewer
-    ? (viewerSnapshot?.currencyUnit ?? '新台幣')
+    ? (viewerSnapshot?.currencyUnit ?? '天幣')
     : settings.currencyUnit;
   const displayStage: DrawStageStep = isLiveViewer ? viewerStage : stage;
   const displayLockedWinner = isLiveViewer ? viewerLockedWinner : lockedWinner;
@@ -666,7 +680,7 @@ export function App() {
       }
 
       const resolvedItemName = itemName.trim() || '未指定項目';
-      const resolvedUnit = settings.currencyUnit.trim() || '新台幣';
+      const resolvedUnit = settings.currencyUnit.trim() || '天幣';
 
       const newRecord: DrawRecord = {
         id: `rec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -1210,138 +1224,141 @@ export function App() {
           {/* LEFT STAGE: Roulette Arena (7 cols) */}
           <section
             aria-label="輪盤抽獎主舞台"
-            className="arcade-stage relative rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center"
+            className="arcade-stage rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center"
           >
-            {/* Multi-Track Danmaku Overlay (Only mounted in Live Mode when in a room) */}
-            {isLiveMode && Boolean(roomCode) && (
-              <DanmakuOverlay messages={danmakuMessages} visible={danmakuVisible} />
-            )}
-
-            {/* Target Auction Item Banner */}
-            <div className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl border border-[#F43F5E]/45 bg-gradient-to-r from-[#F43F5E]/15 via-[#7C3AED]/15 to-[#0F0F23]/80 px-4 py-2.5">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F43F5E]/20 text-[#FB7185]">
-                  <Gem className="h-4 w-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#FECDD3]">
-                    本次搶標項目
-                  </div>
-                  <div className="truncate font-display text-base sm:text-lg text-white">
-                    {displayItemName.trim() || '未指定項目（請於右側輸入）'}
-                  </div>
-                </div>
-              </div>
-              {!isLiveViewer && (
-                <button
-                  type="button"
-                  disabled={isSpinning}
-                  onClick={() => {
-                    setActiveTab('pool');
-                    window.setTimeout(() => {
-                      document.getElementById('auction-item-input')?.focus();
-                    }, 50);
-                  }}
-                  className="shrink-0 cursor-pointer rounded-lg border border-white/15 bg-[#0F0F23]/70 px-3 py-1.5 text-xs font-semibold text-[#E2E8F0] transition-colors hover:border-[#FB7185]/60 hover:text-white disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
-                >
-                  更換項目
-                </button>
+            {/* Upper Visual Arena: Danmaku floats ONLY above this zone so buttons & danmaku input are NEVER overlapped */}
+            <div className="relative flex w-full flex-col items-center">
+              {/* Multi-Track Danmaku Overlay (Only mounted in Live Mode when in a room) */}
+              {isLiveMode && Boolean(roomCode) && (
+                <DanmakuOverlay messages={danmakuMessages} visible={danmakuVisible} />
               )}
-            </div>
 
-            {/* Current Round Matchup Scoreboard */}
-            <div className="mb-5 grid w-full grid-cols-2 gap-3">
-              <div
-                className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                  displayLockedWinner
-                    ? 'border-[#A78BFA]/70 bg-[#7C3AED]/20 shadow-[0_0_24px_rgba(124,58,237,0.25)]'
-                    : 'border-white/10 bg-[#0F0F23]/75'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                  <Users className="h-3.5 w-3.5 text-[#A78BFA]" aria-hidden="true" />
-                  <span>本輪得標人物 ID</span>
+              {/* Target Auction Item Banner */}
+              <div className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl border border-[#F43F5E]/45 bg-gradient-to-r from-[#F43F5E]/15 via-[#7C3AED]/15 to-[#0F0F23]/80 px-4 py-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F43F5E]/20 text-[#FB7185]">
+                    <Gem className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#FECDD3]">
+                      本次搶標項目
+                    </div>
+                    <div className="truncate font-display text-base sm:text-lg text-white">
+                      {displayItemName.trim() || '未指定項目（請於右側輸入）'}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 truncate font-display text-lg sm:text-xl text-white">
-                  {displayLockedWinner ? displayLockedWinner.id : '待抽出...'}
-                </div>
-              </div>
-
-              <div
-                className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                  displayLatestRecord
-                    ? displayLatestRecord.tier === 'min'
-                      ? 'border-[#10B981]/70 bg-[#10B981]/20'
-                      : displayLatestRecord.tier === 'max'
-                        ? 'border-[#F43F5E]/70 bg-[#F43F5E]/20'
-                        : 'border-[#F59E0B]/60 bg-[#F59E0B]/15'
-                    : 'border-white/10 bg-[#0F0F23]/75'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                  <Coins className="h-3.5 w-3.5 text-[#FBBF24]" aria-hidden="true" />
-                  <span>本輪得標金額</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span
-                    className={`truncate font-display text-lg sm:text-xl tabular-nums ${
-                      displayLatestRecord
-                        ? displayLatestRecord.tier === 'min'
-                          ? 'text-[#34D399]'
-                          : displayLatestRecord.tier === 'max'
-                            ? 'text-[#FB7185]'
-                            : 'text-[#FDE68A]'
-                        : 'text-[#94A3B8]'
-                    }`}
+                {!isLiveViewer && (
+                  <button
+                    type="button"
+                    disabled={isSpinning}
+                    onClick={() => {
+                      setActiveTab('pool');
+                      window.setTimeout(() => {
+                        document.getElementById('auction-item-input')?.focus();
+                      }, 50);
+                    }}
+                    className="shrink-0 cursor-pointer rounded-lg border border-white/15 bg-[#0F0F23]/70 px-3 py-1.5 text-xs font-semibold text-[#E2E8F0] transition-colors hover:border-[#FB7185]/60 hover:text-white disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
                   >
-                    {displayLatestRecord
-                      ? formatAmount(displayLatestRecord.amount, displayLatestRecord.currencyUnit)
-                      : '待抽出...'}
-                  </span>
-                  {displayLatestRecord?.tier === 'min' && (
-                    <Crown className="h-4 w-4 shrink-0 text-[#FDE68A]" aria-hidden="true" />
-                  )}
-                  {displayLatestRecord?.tier === 'max' && (
-                    <Flame className="h-4 w-4 shrink-0 text-[#FB7185]" aria-hidden="true" />
-                  )}
+                    更換項目
+                  </button>
+                )}
+              </div>
+
+              {/* Current Round Matchup Scoreboard */}
+              <div className="mb-5 grid w-full grid-cols-2 gap-3">
+                <div
+                  className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
+                    displayLockedWinner
+                      ? 'border-[#A78BFA]/70 bg-[#7C3AED]/20 shadow-[0_0_24px_rgba(124,58,237,0.25)]'
+                      : 'border-white/10 bg-[#0F0F23]/75'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                    <Users className="h-3.5 w-3.5 text-[#A78BFA]" aria-hidden="true" />
+                    <span>本輪得標人物 ID</span>
+                  </div>
+                  <div className="mt-1 truncate font-display text-lg sm:text-xl text-white">
+                    {displayLockedWinner ? displayLockedWinner.id : '待抽出...'}
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
+                    displayLatestRecord
+                      ? displayLatestRecord.tier === 'min'
+                        ? 'border-[#10B981]/70 bg-[#10B981]/20'
+                        : displayLatestRecord.tier === 'max'
+                          ? 'border-[#F43F5E]/70 bg-[#F43F5E]/20'
+                          : 'border-[#F59E0B]/60 bg-[#F59E0B]/15'
+                      : 'border-white/10 bg-[#0F0F23]/75'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+                    <Coins className="h-3.5 w-3.5 text-[#FBBF24]" aria-hidden="true" />
+                    <span>本輪得標金額</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span
+                      className={`truncate font-display text-lg sm:text-xl tabular-nums ${
+                        displayLatestRecord
+                          ? displayLatestRecord.tier === 'min'
+                            ? 'text-[#34D399]'
+                            : displayLatestRecord.tier === 'max'
+                              ? 'text-[#FB7185]'
+                              : 'text-[#FDE68A]'
+                          : 'text-[#94A3B8]'
+                      }`}
+                    >
+                      {displayLatestRecord
+                        ? formatAmount(displayLatestRecord.amount, displayLatestRecord.currencyUnit)
+                        : '待抽出...'}
+                    </span>
+                    {displayLatestRecord?.tier === 'min' && (
+                      <Crown className="h-4 w-4 shrink-0 text-[#FDE68A]" aria-hidden="true" />
+                    )}
+                    {displayLatestRecord?.tier === 'max' && (
+                      <Flame className="h-4 w-4 shrink-0 text-[#FB7185]" aria-hidden="true" />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Active Mode Badge */}
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${
-                  wheelMode === 'participant'
-                    ? 'bg-[#7C3AED]/25 text-[#DDD6FE] border border-[#7C3AED]/50'
-                    : 'bg-[#F59E0B]/20 text-[#FDE68A] border border-[#F59E0B]/50'
-                }`}
-              >
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>
-                  {wheelMode === 'participant'
-                    ? `人物輪盤模式（剩餘 ${displayParticipants.length} 位）`
-                    : `金額輪盤模式（剩餘 ${displayAmounts.length} 筆｜${displayCurrencyUnit}）`}
+              {/* Active Mode Badge */}
+              <div className="mb-2 flex items-center gap-2 text-xs font-bold">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${
+                    wheelMode === 'participant'
+                      ? 'bg-[#7C3AED]/25 text-[#DDD6FE] border border-[#7C3AED]/50'
+                      : 'bg-[#F59E0B]/20 text-[#FDE68A] border border-[#F59E0B]/50'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>
+                    {wheelMode === 'participant'
+                      ? `人物輪盤模式（剩餘 ${displayParticipants.length} 位）`
+                      : `金額輪盤模式（剩餘 ${displayAmounts.length} 筆｜${displayCurrencyUnit}）`}
+                  </span>
                 </span>
-              </span>
-            </div>
+              </div>
 
-            {/* The Canvas Roulette Wheel */}
-            <RouletteWheel
-              items={wheelItems}
-              mode={wheelMode}
-              isSpinning={isSpinning}
-              disabled={!canStartDraw}
-              readOnly={isLiveViewer}
-              actionLabel={primaryActionLabel}
-              accentMode={wheelAccentMode}
-              spinRequestId={spinRequestId}
-              externalSpin={isLiveViewer ? externalSpin : null}
-              onSpinStart={handleSpinStart}
-              onSpinDispatched={handleHostSpinDispatched}
-              onSpinComplete={handleSpinComplete}
-              onTriggerSpin={handleTriggerSpin}
-            />
+              {/* The Canvas Roulette Wheel */}
+              <RouletteWheel
+                items={wheelItems}
+                mode={wheelMode}
+                isSpinning={isSpinning}
+                disabled={!canStartDraw}
+                readOnly={isLiveViewer}
+                actionLabel={primaryActionLabel}
+                accentMode={wheelAccentMode}
+                spinRequestId={spinRequestId}
+                externalSpin={isLiveViewer ? externalSpin : null}
+                onSpinStart={handleSpinStart}
+                onSpinDispatched={handleHostSpinDispatched}
+                onSpinComplete={handleSpinComplete}
+                onTriggerSpin={handleTriggerSpin}
+              />
+            </div>
 
             {/* Primary Stage Controls */}
             <div className="mt-6 flex w-full max-w-md flex-col gap-2.5">

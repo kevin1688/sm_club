@@ -60,3 +60,4 @@ export interface DanmakuMessage {
   kind: DanmakuKind;
   createdAt: number;
 }
+

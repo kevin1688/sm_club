@@ -92,3 +92,4 @@ export function normalizeRoomCode(input: string): string {
   }
   return trimmed.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase().slice(0, 16);
 }
+

@@ -34,3 +34,4 @@ describe('danmakuLogic', () => {
     expect(normalizeRoomCode('  abc-123  ')).toBe('ABC-123');
   });
 });
+
