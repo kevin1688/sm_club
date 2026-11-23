@@ -111,10 +111,12 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, displaySize, displaySize);
 
+    const sizeScale = Math.max(0.95, Math.min(1.75, displaySize / 430));
+    const bezelWidth = Math.round(18 * Math.min(1.3, sizeScale));
     const cx = displaySize / 2;
-    const cy = displaySize / 2 + 6;
-    const outerRadius = displaySize * 0.44;
-    const wheelRadius = outerRadius - 18;
+    const cy = displaySize / 2 + Math.round(6 * Math.min(1.3, sizeScale));
+    const outerRadius = displaySize * 0.462;
+    const wheelRadius = outerRadius - bezelWidth;
     const currentItems = activeSpinItemsRef.current ?? itemsRef.current;
     const activeMode = activeSpinModeRef.current ?? mode;
     const count = currentItems.length;
@@ -128,12 +130,12 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
           : activeMode === 'amount'
             ? 'rgba(245, 158, 11, 0.24)'
             : 'rgba(124, 58, 237, 0.32)';
-    const bgGlow = ctx.createRadialGradient(cx, cy, wheelRadius * 0.5, cx, cy, outerRadius + 22);
+    const bgGlow = ctx.createRadialGradient(cx, cy, wheelRadius * 0.5, cx, cy, outerRadius + 16);
     bgGlow.addColorStop(0, glowColor);
     bgGlow.addColorStop(1, 'rgba(15, 15, 35, 0)');
     ctx.fillStyle = bgGlow;
     ctx.beginPath();
-    ctx.arc(cx, cy, outerRadius + 22, 0, Math.PI * 2);
+    ctx.arc(cx, cy, outerRadius + 16, 0, Math.PI * 2);
     ctx.fill();
 
     // 2. 3D Metallic Bezel Ring
@@ -160,7 +162,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
     // 3. Animated LED Chase Bulbs on Bezel
     const bulbCount = 24;
-    const bulbOrbit = outerRadius - 9;
+    const bulbOrbit = outerRadius - bezelWidth / 2;
+    const bulbRadius = 3.6 * Math.min(1.35, sizeScale);
     for (let i = 0; i < bulbCount; i += 1) {
       const angle = (i / bulbCount) * Math.PI * 2 - Math.PI / 2;
       const bx = cx + Math.cos(angle) * bulbOrbit;
@@ -168,7 +171,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       const lit = (i + Math.floor(ledTick)) % 2 === 0;
 
       ctx.beginPath();
-      ctx.arc(bx, by, 3.6, 0, Math.PI * 2);
+      ctx.arc(bx, by, bulbRadius, 0, Math.PI * 2);
       if (lit) {
         const bulbColor =
           accentMode === 'min'
@@ -256,7 +259,6 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
         const baseFontSize =
           count <= 6 ? 16 : count <= 10 ? 14 : count <= 16 ? 12 : count <= 24 ? 10 : 8.5;
-        const sizeScale = Math.max(0.95, Math.min(1.42, displaySize / 430));
         const fontSize = Math.round(baseFontSize * sizeScale * 10) / 10;
         const maxChars = count <= 8 ? 13 : count <= 16 ? 10 : 7;
 
@@ -265,16 +267,17 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
         ctx.shadowBlur = 4;
 
+        const labelInset = Math.round(18 * Math.min(1.4, sizeScale));
         const displayLabel = truncateText(item.label, maxChars);
-        ctx.fillText(displayLabel, wheelRadius - 18, 0);
+        ctx.fillText(displayLabel, wheelRadius - labelInset, 0);
 
         if (item.badge && count <= 14) {
-          ctx.font = `700 ${Math.max(8, fontSize - 4)}px "Chakra Petch", "Noto Sans TC", sans-serif`;
+          ctx.font = `700 ${Math.max(8, Math.round(fontSize * 0.72))}px "Chakra Petch", "Noto Sans TC", sans-serif`;
           ctx.fillStyle = item.badge === 'min' ? '#FEF08A' : '#FFE4E6';
           ctx.fillText(
             item.badge === 'min' ? 'MIN 幸運' : 'MAX 最高',
-            wheelRadius - 18,
-            fontSize * 0.92
+            wheelRadius - labelInset,
+            fontSize * 0.94
           );
         }
 
@@ -282,13 +285,14 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       }
 
       // 5. Physical Peg Pins at Every Slice Boundary
+      const pegRadius = (count > 20 ? 2.4 : 3.4) * Math.min(1.4, sizeScale);
       for (let i = 0; i < count; i += 1) {
         const pegAngle = i * sliceAngle;
-        const px = Math.cos(pegAngle) * (wheelRadius - 3);
-        const py = Math.sin(pegAngle) * (wheelRadius - 3);
+        const px = Math.cos(pegAngle) * (wheelRadius - 3.5);
+        const py = Math.sin(pegAngle) * (wheelRadius - 3.5);
 
         ctx.beginPath();
-        ctx.arc(px, py, count > 20 ? 2.4 : 3.4, 0, Math.PI * 2);
+        ctx.arc(px, py, pegRadius, 0, Math.PI * 2);
         ctx.fillStyle = '#F8FAFC';
         ctx.fill();
         ctx.lineWidth = 1;
@@ -308,8 +312,9 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
     ctx.fill();
 
     // Inner recessed hub ring
+    const hubRingRadius = Math.round(48 * Math.min(1.25, sizeScale));
     ctx.beginPath();
-    ctx.arc(0, 0, 48, 0, Math.PI * 2);
+    ctx.arc(0, 0, hubRingRadius, 0, Math.PI * 2);
     ctx.fillStyle = '#0F0F23';
     ctx.fill();
     ctx.lineWidth = 4;
@@ -318,10 +323,12 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
     ctx.restore();
 
-    // 6. Top Physical Spring-Back Pointer Flapper
+    // 6. Top Physical Spring-Back Pointer Flapper (scales proportionally on huge Spotlight wheel)
+    const ptrScale = Math.min(1.4, sizeScale);
     ctx.save();
-    ctx.translate(cx, cy - outerRadius + 3);
+    ctx.translate(cx, cy - outerRadius + Math.round(3 * ptrScale));
     ctx.rotate(flapperAngle);
+    ctx.scale(ptrScale, ptrScale);
 
     // Shadow
     ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
@@ -563,8 +570,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       {/* Live pointer readout pill */}
       <div
         aria-live="polite"
-        className={`mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-semibold shadow-lg transition-all duration-300 ${
-          expanded ? 'text-base sm:text-lg px-5 py-2' : 'text-sm'
+        className={`inline-flex items-center gap-2 rounded-full border font-semibold shadow-lg transition-all duration-300 ${
+          expanded ? 'mb-1.5 text-base sm:text-lg px-5 py-1.5' : 'mb-3 px-4 py-1.5 text-sm'
         } ${
           isSuspensePhase
             ? 'border-[#F43F5E] bg-[#2D0E1F]/95 text-[#FFE4E6] shadow-[0_0_24px_rgba(244,63,94,0.45)]'
@@ -578,7 +585,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         <span className={isSuspensePhase ? 'text-[#FDA4AF]' : 'text-[#94A3B8]'}>
           {isSuspensePhase ? '即將揭曉：' : '指針位置：'}
         </span>
-        <span className="max-w-[240px] truncate font-bold text-white tabular-nums">
+        <span className="max-w-[260px] truncate font-bold text-white tabular-nums">
           {liveHoverLabel || (items.length === 0 ? '請先新增名單' : '準備就緒')}
         </span>
       </div>
@@ -588,8 +595,8 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         className={`relative w-full aspect-square flex items-center justify-center transition-all duration-300 ${
           expanded
             ? hasLiveSidebar
-              ? 'max-w-[min(78vw,44dvh,380px)] sm:max-w-[min(68vw,48dvh,440px)] lg:max-w-[min(56vw,68dvh,580px)]'
-              : 'max-w-[min(88vw,66dvh,580px)] sm:max-w-[min(82vw,70dvh,620px)]'
+              ? 'max-w-[min(90vw,52dvh,430px)] sm:max-w-[min(76vw,56dvh,500px)] lg:max-w-[min(64vw,79dvh,760px)]'
+              : 'max-w-[min(92vw,76dvh,680px)] sm:max-w-[min(90vw,82dvh,800px)]'
             : 'max-w-[440px]'
         }`}
       >
@@ -606,7 +613,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
           disabled={!canClickHub}
           aria-label={actionLabel}
           className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[6px] flex flex-col items-center justify-center rounded-full border-2 font-display text-xs tracking-wider shadow-[0_10px_25px_rgba(0,0,0,0.75)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] ${
-            expanded ? 'h-[92px] w-[92px] sm:h-[104px] sm:w-[104px]' : 'h-[86px] w-[86px]'
+            expanded ? 'h-[96px] w-[96px] sm:h-[112px] sm:w-[112px] sm:text-sm' : 'h-[86px] w-[86px]'
           } ${
             canClickHub
               ? mode === 'amount'

@@ -1337,13 +1337,13 @@ export function App() {
             aria-label="輪盤抽獎主舞台"
             className={
               spotlightActive
-                ? 'fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_35%_45%,rgba(124,58,237,0.28),rgba(9,8,24,0.98)_70%)] px-3 py-3 sm:px-6 sm:py-4 backdrop-blur-xl transition-all duration-300'
+                ? 'fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_35%_45%,rgba(124,58,237,0.28),rgba(9,8,24,0.98)_70%)] px-3 py-2 sm:px-5 sm:py-3 backdrop-blur-xl transition-all duration-300'
                 : 'arcade-stage rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center'
             }
           >
             {/* Spotlight Compact Top Header (Only shown when expanded) */}
             {spotlightActive && (
-              <div className="mb-2.5 flex w-full max-w-7xl shrink-0 mx-auto items-center justify-between gap-3 rounded-xl border border-[#7C3AED]/45 bg-[#14122B]/92 px-3.5 py-2 shadow-xl">
+              <div className="mb-2 flex w-full max-w-[1440px] shrink-0 mx-auto items-center justify-between gap-3 rounded-xl border border-[#7C3AED]/45 bg-[#14122B]/92 px-3.5 py-1.5 shadow-xl">
                 <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F43F5E]/20 px-2.5 py-1 text-xs font-bold text-[#FECDD3]">
                     <Gem className="h-3.5 w-3.5 text-[#FB7185]" aria-hidden="true" />
@@ -1415,11 +1415,11 @@ export function App() {
               </div>
             )}
 
-            {/* Theater Body: Desktop side-by-side (70% Wheel + 30% Live Danmaku Panel) in Live Spotlight; vertical stack on Mobile & Normal Mode */}
+            {/* Theater Body: Desktop side-by-side (Oversized Wheel + Sleek Live Danmaku Panel) in Live Spotlight; vertical stack on Mobile & Normal Mode */}
             <div
               className={
                 spotlightActive
-                  ? `mx-auto flex flex-1 min-h-0 w-full max-w-7xl flex-col gap-3 sm:gap-4 overflow-hidden ${
+                  ? `mx-auto flex flex-1 min-h-0 w-full max-w-[1440px] flex-col gap-2.5 sm:gap-4 overflow-hidden ${
                       isLiveMode && Boolean(roomCode)
                         ? 'lg:flex-row lg:items-stretch'
                         : 'items-center justify-center'
@@ -1635,12 +1635,12 @@ export function App() {
                 )}
               </div>
 
-              {/* CHILD 2: Dedicated Live Danmaku Theater Panel (Desktop right 30% sidebar / Mobile pinned bottom bar — NEVER remounts!) */}
+              {/* CHILD 2: Dedicated Live Danmaku Theater Panel (Desktop sleek right sidebar / Mobile pinned bottom bar — NEVER remounts!) */}
               {isLiveMode && Boolean(roomCode) && (
                 <div
                   className={
                     spotlightActive
-                      ? 'relative z-30 shrink-0 w-full lg:flex lg:h-full lg:min-h-0 lg:w-[340px] xl:w-[380px] lg:flex-col lg:rounded-2xl lg:border lg:border-[#7C3AED]/45 lg:bg-[#131129]/95 lg:p-3.5 lg:shadow-2xl'
+                      ? 'relative z-30 shrink-0 w-full lg:flex lg:h-full lg:min-h-0 lg:w-[320px] xl:w-[350px] lg:flex-col lg:rounded-2xl lg:border lg:border-[#7C3AED]/45 lg:bg-[#131129]/95 lg:p-3 lg:shadow-2xl'
                       : 'relative z-30 w-full'
                   }
                 >
