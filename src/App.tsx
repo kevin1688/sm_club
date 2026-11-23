@@ -1122,26 +1122,26 @@ export function App() {
         : 3;
 
   return (
-    <div className="min-h-screen bg-[#0F0F23] text-[#E2E8F0] relative overflow-x-hidden flex flex-col">
-      {/* Subtle Ambient Background Gradients */}
+    <div className="min-h-screen bg-gradient-to-br from-[#2B1242] via-[#211035] to-[#36143E] text-[#F8EDFF] relative overflow-x-hidden flex flex-col">
+      {/* Pink & Lavender-Purple Ambient Aurora Background */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(124,58,237,0.16),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(244,63,94,0.12),transparent_50%)]"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(244,114,182,0.30),transparent_52%),radial-gradient(ellipse_at_top_right,rgba(192,132,252,0.28),transparent_50%),radial-gradient(ellipse_at_bottom_center,rgba(236,72,153,0.22),transparent_55%)]"
       />
 
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-30 border-b border-[#4C1D95]/45 bg-[#0F0F23]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[#F472B6]/35 bg-[#221036]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#A78BFA]/40 bg-gradient-to-br from-[#7C3AED] to-[#4C1D95] text-white shadow-[0_0_20px_rgba(124,58,237,0.45)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#F9A8D4]/55 bg-gradient-to-br from-[#EC4899] to-[#A855F7] text-white shadow-[0_0_24px_rgba(236,72,153,0.48)]">
               <Disc3 className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <h1 className="font-display text-lg sm:text-xl leading-tight text-white">
-                LUCKY PRICE ROULETTE
+                成俱樂部標標樂
               </h1>
-              <p className="text-[11px] font-medium text-[#94A3B8]">
+              <p className="text-[11px] font-medium text-[#E9D5FF]">
                 雙階段人物 × 金額輪盤抽獎系統
               </p>
             </div>
@@ -1337,7 +1337,7 @@ export function App() {
             aria-label="輪盤抽獎主舞台"
             className={
               spotlightActive
-                ? 'fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_35%_45%,rgba(124,58,237,0.28),rgba(9,8,24,0.98)_70%)] px-3 py-2 sm:px-5 sm:py-3 backdrop-blur-xl transition-all duration-300'
+                ? 'fixed inset-0 z-40 flex h-[100dvh] flex-col overflow-hidden bg-[radial-gradient(circle_at_35%_35%,rgba(244,114,182,0.32),rgba(168,85,247,0.22)_38%,rgba(26,12,42,0.97)_74%)] px-3 py-2 sm:px-5 sm:py-3 backdrop-blur-xl transition-all duration-300'
                 : 'arcade-stage rounded-2xl p-5 sm:p-7 lg:col-span-7 flex flex-col items-center'
             }
           >
@@ -1799,7 +1799,7 @@ export function App() {
       </main>
 
       {/* Footer with MIT License Notice */}
-      <footer className="relative z-10 border-t border-[#4C1D95]/30 bg-[#0F0F23]/70 py-4 text-center text-xs text-[#94A3B8]">
+      <footer className="relative z-10 border-t border-[#F472B6]/25 bg-[#1F0F33]/75 py-4 text-center text-xs text-[#D8B4FE]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           Copyright &copy; 2026 <span className="font-semibold text-[#E2E8F0]">kb18k</span> &middot;{' '}
           <a

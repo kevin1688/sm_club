@@ -128,23 +128,23 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
         : accentMode === 'max'
           ? 'rgba(244, 63, 94, 0.36)'
           : activeMode === 'amount'
-            ? 'rgba(245, 158, 11, 0.24)'
-            : 'rgba(124, 58, 237, 0.32)';
+            ? 'rgba(245, 158, 11, 0.28)'
+            : 'rgba(244, 114, 182, 0.36)';
     const bgGlow = ctx.createRadialGradient(cx, cy, wheelRadius * 0.5, cx, cy, outerRadius + 16);
     bgGlow.addColorStop(0, glowColor);
-    bgGlow.addColorStop(1, 'rgba(15, 15, 35, 0)');
+    bgGlow.addColorStop(1, 'rgba(29, 15, 46, 0)');
     ctx.fillStyle = bgGlow;
     ctx.beginPath();
     ctx.arc(cx, cy, outerRadius + 16, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. 3D Metallic Bezel Ring
+    // 2. 3D Metallic Pink & Lavender Bezel Ring
     const bezelGrad = ctx.createLinearGradient(cx - outerRadius, cy - outerRadius, cx + outerRadius, cy + outerRadius);
-    bezelGrad.addColorStop(0, '#4C1D95');
-    bezelGrad.addColorStop(0.28, '#2E1065');
-    bezelGrad.addColorStop(0.52, '#6D28D9');
-    bezelGrad.addColorStop(0.78, '#1E1B4B');
-    bezelGrad.addColorStop(1, '#3B0764');
+    bezelGrad.addColorStop(0, '#DB2777');
+    bezelGrad.addColorStop(0.28, '#581C87');
+    bezelGrad.addColorStop(0.52, '#A855F7');
+    bezelGrad.addColorStop(0.78, '#4A1D66');
+    bezelGrad.addColorStop(1, '#BE185D');
 
     ctx.beginPath();
     ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
