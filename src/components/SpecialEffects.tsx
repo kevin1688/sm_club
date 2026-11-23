@@ -119,7 +119,7 @@ export const SpecialEffects: React.FC<SpecialEffectsProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="draw-result-heading"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md transition-opacity duration-200 ${
+      className={`fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-md transition-opacity duration-200 ${
         isMax
           ? 'bg-[#2A0410]/82'
           : isMin

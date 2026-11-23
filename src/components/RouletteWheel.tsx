@@ -16,6 +16,7 @@ interface RouletteWheelProps {
   disabled: boolean;
   readOnly?: boolean;
   expanded?: boolean;
+  hasLiveSidebar?: boolean;
   actionLabel: string;
   accentMode?: 'default' | 'min' | 'max';
   spinRequestId: number;
@@ -58,6 +59,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
   disabled,
   readOnly = false,
   expanded = false,
+  hasLiveSidebar = false,
   actionLabel,
   accentMode = 'default',
   spinRequestId,
@@ -585,7 +587,9 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
       <div
         className={`relative w-full aspect-square flex items-center justify-center transition-all duration-300 ${
           expanded
-            ? 'max-w-[min(88vw,60vh,580px)] sm:max-w-[min(82vw,64vh,600px)]'
+            ? hasLiveSidebar
+              ? 'max-w-[min(78vw,44dvh,380px)] sm:max-w-[min(68vw,48dvh,440px)] lg:max-w-[min(56vw,68dvh,580px)]'
+              : 'max-w-[min(88vw,66dvh,580px)] sm:max-w-[min(82vw,70dvh,620px)]'
             : 'max-w-[440px]'
         }`}
       >
