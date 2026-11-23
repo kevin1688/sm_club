@@ -994,10 +994,10 @@ export function App() {
         setViewerSnapshot((prev) =>
           prev
             ? {
-                ...prev,
-                latestRecord: record,
-                records: mergeDrawRecords([record], prev.records),
-              }
+              ...prev,
+              latestRecord: record,
+              records: mergeDrawRecords([record], prev.records),
+            }
             : prev
         );
       },
@@ -1139,7 +1139,7 @@ export function App() {
             </div>
             <div>
               <h1 className="font-display text-lg sm:text-xl leading-tight text-white">
-                成俱樂部標標樂
+                俱樂部標標樂
               </h1>
               <p className="text-[11px] font-medium text-[#E9D5FF]">
                 雙階段人物 × 金額輪盤抽獎系統
@@ -1158,11 +1158,10 @@ export function App() {
               role="tab"
               aria-selected={appMode === 'classic'}
               onClick={() => handleSwitchAppMode('classic')}
-              className={`inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
-                appMode === 'classic'
+              className={`inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${appMode === 'classic'
                   ? 'bg-[#7C3AED] text-white shadow'
                   : 'text-[#94A3B8] hover:text-white'
-              }`}
+                }`}
             >
               <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
               <span>經典模式</span>
@@ -1173,11 +1172,10 @@ export function App() {
               role="tab"
               aria-selected={appMode === 'live'}
               onClick={() => handleSwitchAppMode('live')}
-              className={`inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
-                appMode === 'live'
+              className={`inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${appMode === 'live'
                   ? 'bg-gradient-to-r from-[#F43F5E] to-[#7C3AED] text-white shadow'
                   : 'text-[#94A3B8] hover:text-white'
-              }`}
+                }`}
             >
               <Radio className="h-3.5 w-3.5" aria-hidden="true" />
               <span>即時連線房</span>
@@ -1259,13 +1257,12 @@ export function App() {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-5 right-5 z-40 max-w-sm rounded-xl border px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md animate-reveal-pop ${
-            toast.type === 'success'
+          className={`fixed bottom-5 right-5 z-40 max-w-sm rounded-xl border px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md animate-reveal-pop ${toast.type === 'success'
               ? 'border-[#10B981]/60 bg-[#0D2B24]/95 text-[#D1FAE5]'
               : toast.type === 'error'
                 ? 'border-[#F43F5E]/60 bg-[#2E0F1B]/95 text-[#FFE4E6]'
                 : 'border-[#7C3AED]/60 bg-[#1E1C35]/95 text-[#EDE9FE]'
-          }`}
+            }`}
         >
           {toast.text}
         </div>
@@ -1273,9 +1270,8 @@ export function App() {
 
       {/* Main Responsive Bento Container (elevate stacking context during Spotlight so top header never overlaps!) */}
       <main
-        className={`relative mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8 ${
-          spotlightActive ? 'z-50' : 'z-10'
-        }`}
+        className={`relative mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8 ${spotlightActive ? 'z-50' : 'z-10'
+          }`}
       >
         {/* Live Room Control Bar (Only rendered in Live Mode) */}
         {isLiveMode && (
@@ -1309,13 +1305,12 @@ export function App() {
             return (
               <React.Fragment key={item.step}>
                 <div
-                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-200 ${
-                    active
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-200 ${active
                       ? 'border-[#A78BFA] bg-[#7C3AED]/30 text-white shadow-[0_0_20px_rgba(124,58,237,0.35)]'
                       : done
                         ? 'border-[#10B981]/50 bg-[#10B981]/15 text-[#6EE7B7]'
                         : 'border-white/10 bg-[#1E1C35]/60 text-[#94A3B8]'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>{item.title}</span>
@@ -1358,11 +1353,10 @@ export function App() {
                     </span>
                   )}
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                      wheelMode === 'participant'
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${wheelMode === 'participant'
                         ? 'bg-[#7C3AED]/25 text-[#DDD6FE]'
                         : 'bg-[#F59E0B]/20 text-[#FDE68A]'
-                    }`}
+                      }`}
                   >
                     <Sparkles className="h-3 w-3" aria-hidden="true" />
                     <span>
@@ -1419,11 +1413,10 @@ export function App() {
             <div
               className={
                 spotlightActive
-                  ? `mx-auto flex flex-1 min-h-0 w-full max-w-[1440px] flex-col gap-2.5 sm:gap-4 overflow-hidden ${
-                      isLiveMode && Boolean(roomCode)
-                        ? 'lg:flex-row lg:items-stretch'
-                        : 'items-center justify-center'
-                    }`
+                  ? `mx-auto flex flex-1 min-h-0 w-full max-w-[1440px] flex-col gap-2.5 sm:gap-4 overflow-hidden ${isLiveMode && Boolean(roomCode)
+                    ? 'lg:flex-row lg:items-stretch'
+                    : 'items-center justify-center'
+                  }`
                   : 'flex w-full flex-col items-center'
               }
             >
@@ -1486,11 +1479,10 @@ export function App() {
                     {/* Current Round Matchup Scoreboard */}
                     <div className="mb-5 grid w-full grid-cols-2 gap-3">
                       <div
-                        className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                          displayLockedWinner
+                        className={`rounded-xl border px-4 py-3 transition-all duration-200 ${displayLockedWinner
                             ? 'border-[#A78BFA]/70 bg-[#7C3AED]/20 shadow-[0_0_24px_rgba(124,58,237,0.25)]'
                             : 'border-white/10 bg-[#0F0F23]/75'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
                           <Users className="h-3.5 w-3.5 text-[#A78BFA]" aria-hidden="true" />
@@ -1502,15 +1494,14 @@ export function App() {
                       </div>
 
                       <div
-                        className={`rounded-xl border px-4 py-3 transition-all duration-200 ${
-                          displayLatestRecord
+                        className={`rounded-xl border px-4 py-3 transition-all duration-200 ${displayLatestRecord
                             ? displayLatestRecord.tier === 'min'
                               ? 'border-[#10B981]/70 bg-[#10B981]/20'
                               : displayLatestRecord.tier === 'max'
                                 ? 'border-[#F43F5E]/70 bg-[#F43F5E]/20'
                                 : 'border-[#F59E0B]/60 bg-[#F59E0B]/15'
                             : 'border-white/10 bg-[#0F0F23]/75'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
                           <Coins className="h-3.5 w-3.5 text-[#FBBF24]" aria-hidden="true" />
@@ -1518,15 +1509,14 @@ export function App() {
                         </div>
                         <div className="mt-1 flex items-center gap-1.5">
                           <span
-                            className={`truncate font-display text-lg sm:text-xl tabular-nums ${
-                              displayLatestRecord
+                            className={`truncate font-display text-lg sm:text-xl tabular-nums ${displayLatestRecord
                                 ? displayLatestRecord.tier === 'min'
                                   ? 'text-[#34D399]'
                                   : displayLatestRecord.tier === 'max'
                                     ? 'text-[#FB7185]'
                                     : 'text-[#FDE68A]'
                                 : 'text-[#94A3B8]'
-                            }`}
+                              }`}
                           >
                             {displayLatestRecord
                               ? formatAmount(displayLatestRecord.amount, displayLatestRecord.currencyUnit)
@@ -1545,11 +1535,10 @@ export function App() {
                     {/* Active Mode Badge */}
                     <div className="mb-2 flex items-center gap-2 text-xs font-bold">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${
-                          wheelMode === 'participant'
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${wheelMode === 'participant'
                             ? 'bg-[#7C3AED]/25 text-[#DDD6FE] border border-[#7C3AED]/50'
                             : 'bg-[#F59E0B]/20 text-[#FDE68A] border border-[#F59E0B]/50'
-                        }`}
+                          }`}
                       >
                         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                         <span>
@@ -1595,13 +1584,12 @@ export function App() {
                           type="button"
                           disabled={!canStartDraw}
                           onClick={handleTriggerSpin}
-                          className={`flex min-h-[54px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-display text-base tracking-wide shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] disabled:cursor-not-allowed disabled:opacity-45 ${
-                            wheelMode === 'amount' && stage !== 'result-revealed'
+                          className={`flex min-h-[54px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-display text-base tracking-wide shadow-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F23] disabled:cursor-not-allowed disabled:opacity-45 ${wheelMode === 'amount' && stage !== 'result-revealed'
                               ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#0F0F23] hover:brightness-110'
                               : stage === 'result-revealed'
                                 ? 'bg-gradient-to-r from-[#7C3AED] to-[#6D28D9] text-white hover:brightness-110'
                                 : 'bg-gradient-to-r from-[#F43F5E] to-[#E11D48] text-white hover:brightness-110'
-                          }`}
+                            }`}
                         >
                           {stage === 'result-revealed' ? (
                             <RotateCcw className="h-5 w-5" aria-hidden="true" />
@@ -1707,10 +1695,10 @@ export function App() {
                   githubConfig={githubConfig}
                   syncStatus={syncStatus}
                   readOnlyViewer
-                  onSyncAllToGitHub={() => {}}
-                  onPullFromGitHub={() => {}}
-                  onClearLocalRecords={() => {}}
-                  onOpenGitHubSettings={() => {}}
+                  onSyncAllToGitHub={() => { }}
+                  onPullFromGitHub={() => { }}
+                  onClearLocalRecords={() => { }}
+                  onOpenGitHubSettings={() => { }}
                 />
               </div>
             ) : (
@@ -1726,11 +1714,10 @@ export function App() {
                     role="tab"
                     aria-selected={activeTab === 'pool'}
                     onClick={() => setActiveTab('pool')}
-                    className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
-                      activeTab === 'pool'
+                    className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${activeTab === 'pool'
                         ? 'bg-[#7C3AED] text-white shadow'
                         : 'text-[#94A3B8] hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Sliders className="h-4 w-4" aria-hidden="true" />
                     <span>名單與開關</span>
@@ -1741,11 +1728,10 @@ export function App() {
                     role="tab"
                     aria-selected={activeTab === 'history'}
                     onClick={() => setActiveTab('history')}
-                    className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${
-                      activeTab === 'history'
+                    className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] ${activeTab === 'history'
                         ? 'bg-[#7C3AED] text-white shadow'
                         : 'text-[#94A3B8] hover:text-white'
-                    }`}
+                      }`}
                   >
                     <History className="h-4 w-4" aria-hidden="true" />
                     <span>歷史得標紀錄</span>
